@@ -7,39 +7,32 @@ library(lubridate)
 files_list <- list.files(pattern = "\\.csv$", full.names = TRUE)
 data <- lapply(files_list, read.csv, stringsAsFactors = FALSE)
 
-# dedup per file e aggiungi source
-for (i in seq_along(data)) {
-  before <- nrow(data[[i]])
-  data[[i]] <- data[[i]] %>%
-    distinct(ocid, .keep_all = TRUE)
-  data[[i]]$source <- basename(files_list[i])
-  after <- nrow(data[[i]])
-  cat("Processed:", basename(files_list[i]), "rows:", before, "->", after, "(removed", before - after, ")\n")
-}
-
-# rileva conflitti di tipo tra i file
-all_cols <- unique(unlist(lapply(data, names)))
-conflicts <- list()
-for (col in all_cols) {
-  classes <- unique(na.omit(unlist(lapply(data, function(df) if (col %in% names(df)) class(df[[col]]) else NA))))
-  if (length(classes) > 1) conflicts[[col]] <- classes
-}
-
-# risolvi i conflitti coerciando a character e registra le conversioni
-conversions <- list()
-if (length(conflicts) > 0) {
-  for (col in names(conflicts)) {
-    old_classes <- conflicts[[col]]
-    conversions[[col]] <- old_classes
-    data <- lapply(data, function(df) if (col %in% names(df)) { df[[col]] <- as.character(df[[col]]); df } else df)
+conv_str <- function(column_name, df) {
+  if (column_name %in% names(df)) {
+    df[[column_name]] <- as.character(df[[column_name]])
   }
+  df
 }
 
-# report
-cat("\nConflict report:\n")
-if (length(conflicts) == 0) cat("No type conflicts detected.\n") else {
-  for (col in names(conflicts)) cat(sprintf("- %s: types = %s -> coerced to character\n", col, paste(conflicts[[col]], collapse = ", ")))
+conv_num <- function(column_name, df) {
+  if (column_name %in% names(df)) {
+    df[[column_name]] <- as.numeric(df[[column_name]])
+  }
+  df
 }
+
+conversions <- function(df, to_strings_list, to_nums_list) {
+  df <- lapply(to_strings_list, conv_num)
+  df <- lapply(to_nums_list, conv_str)
+  df
+}
+to_strings_vec <- c("buyer_id")
+to_nums_vec <- c("X_link", "tender_value_amount")
+
+
+data <- lapply(data, conversions, lookup = to_nums_list, to_strings_list)
+
+
 
 # unisci
 combined <- bind_rows(data)
@@ -57,7 +50,13 @@ combined <- combined %>%
   ) %>%
   filter(!is.na(tender_value_amount) & !is.na(tender_numberOfTenderers))
 combined <- combined %>%
-  mutate(date = ymd(date))
+  mutate(
+    date = as.character(date),
+    date = gsub("Z$", "+0000", date),                        # Z -> +0000
+    date = gsub("([+-]\\d{2}):(\\d{2})$", "\\1\\2", date),    # +03:00 -> +0300
+    date = lubridate::ymd_hms(date, tz = "UTC")               # parse finale
+  ) %>%
+  mutate()
 
   combined <- bind_rows(data)
 # df: il tuo data.frame
@@ -108,11 +107,34 @@ options(scipen = 999)
 df_filtered <- df_filtered %>%
   mutate(source = recode(source, !!!legend))
 
-conversion <- function(currency, amount)
-  rate <- jsonlite::fromJSON("https://api.frankfurter.app/2021-01-01?from="+(currency)+"&to=EUR")$rates$EUR
-  return(amount * rate)
+rate_needed <- df_filtered %>%
+  select(tender_value_currency, date) %>%
+  mutate(
+    date = lubridate::ymd_hms(as.character(date), tz = "UTC"),  # ensure POSIXct
+    date = lubridate::floor_date(date, unit = "month")          # primo giorno del mese
+  )
 
-  
+# produce la lista minima di month per currency e salva come csv (YYYY-MM-01)
+needed_rates <- rate_needed %>%
+  distinct(tender_value_currency, date) %>%
+  mutate(month = as.Date(format(date, "%Y-%m-01"))) %>%
+  arrange(tender_value_currency, month) %>%
+  select(currency = tender_value_currency, month)
+
+write.csv(needed_rates, "needed_rates.csv", row.names = FALSE)
+
+# leggi i rate forniti (month in formato YYYY-MM-01)
+rates <- read.csv("provided_rates.csv", stringsAsFactors = FALSE) %>%
+  mutate(month = as.Date(month))
+
+# aggancia ai dati originali usando month = primo del mese
+df_with_rates <- df_filtered %>%
+  mutate(month = as.Date(format(date, "%Y-%m-01"))) %>%
+  left_join(rates, by = c("tender_value_currency" = "currency", "month" = "month"))
+
+
+hist(df_filtered$tender_value_amount)
+
 Distribution <- ggplot(df_filtered, aes(x = source)) +
   geom_bar(fill = "skyblue") +
   labs(title = "Furniture tender Distribution")
