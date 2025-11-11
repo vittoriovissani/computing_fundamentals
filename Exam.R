@@ -21,16 +21,17 @@ conv_num <- function(column_name, df) {
   df
 }
 
-conversions <- function(df, to_strings_list, to_nums_list) {
-  df <- lapply(to_strings_list, conv_num)
-  df <- lapply(to_nums_list, conv_str)
-  df
+conversions <- function(df, to_strings_vec, to_nums_vec) {
+   df <- lapply(df, conv_num, to_strings_vec)
+   df <- lapply(df, conv_str, to_nums_vec)
+   df
 }
-to_strings_vec <- c("buyer_id")
-to_nums_vec <- c("X_link", "tender_value_amount")
+
+to_strings_vec <- c('buyer_id')
+to_nums_vec <- c('X_link', 'tender_value_amount')
 
 
-data <- lapply(data, conversions, lookup = to_nums_list, to_strings_list)
+data <- lapply(data, conversions, to_nums_vec, to_strings_vec)
 
 
 
