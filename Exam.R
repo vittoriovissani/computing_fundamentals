@@ -16,25 +16,24 @@ conv_str <- function(column_name, df) {
 
 conv_num <- function(column_name, df) {
   if (column_name %in% names(df)) {
-    df[[column_name]] <- as.numeric(df[[column_name]])
+    df[[column_name]] <- as.numeric(gsub("[^0-9eE+\\.-]", "", as.character(df[[column_name]])))
   }
   df
 }
 
-conversions <- function(df, to_strings_vec, to_nums_vec) {
-   df <- lapply(df, conv_num, to_strings_vec)
-   df <- lapply(df, conv_str, to_nums_vec)
-   df
+conversions <- function(df, to_strings_vec = character(), to_nums_vec = character()) {
+  for (col in to_strings_vec) df <- conv_str(col, df)
+  for (col in to_nums_vec)    df <- conv_num(col, df)
+  df
 }
 
-to_strings_vec <- c('buyer_id')
+
+all_cols <- unique(unlist(lapply(data, names)))
 to_nums_vec <- c('X_link', 'tender_value_amount')
+to_strings_vec <- setdiff(all_cols, to_nums_vec)
 
 
-data <- lapply(data, conversions, to_nums_vec, to_strings_vec)
-
-
-
+data <- lapply(data, function(df)conversions(df, to_strings_vec, to_nums_vec))
 # unisci
 combined <- bind_rows(data)
 
