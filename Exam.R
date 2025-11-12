@@ -118,8 +118,9 @@ rates_needed <- df_filtered %>%
   cat(nrow(rates_needed), "rows")
   rates_needed <- unique(rates_needed)
   cat(nrow(rates_needed), "conversions needed")
+
   
-write.csv(rates_needed, "needed_rates.csv", row.names = FALSE)
+write.csv(rates_needed, "rates_needed.csv", row.names = FALSE)
 
 # leggi i rate forniti (month in formato YYYY-MM-01)
 rates <- read.csv("provided_rates.csv", stringsAsFactors = FALSE) %>%
