@@ -89,11 +89,13 @@ sum(is.na(combined$tender_value_currency))
 cols <- c("tender_minValue_currency", "planning_budget_amount_currency")
 combined <- combined[, !(names(combined) %in% cols)]
 
+
+
+
   
 #filter for furniture-related tender contenent
 cols <- c("tender_title","tender_description","tender_additionalProcurementCategory")
 keywords <- c("furniture")
-
 # costruisci pattern (case-insensitive)
 pat <- paste(keywords, collapse = "|")
 
@@ -106,21 +108,18 @@ df_filtered <- combined %>%
 
 
 
-rate_needed <- df_filtered %>%
+rates_needed <- df_filtered %>%
   select(tender_value_currency, date) %>%
   mutate(
-    date = lubridate::floor_date(date, unit = "month")
-  # primo giorno del mese
+    date = lubridate::floor_date(date, unit = "month")  
+    # primo giorno del mese
   )
-
-# produce la lista minima di month per currency e salva come csv (YYYY-MM-01)
-needed_rates <- rate_needed %>%
-  distinct(tender_value_currency, date) %>%
-  mutate(month = as.Date(format(date, "%Y-%m-01"))) %>%
-  arrange(tender_value_currency, month) %>%
-  select(currency = tender_value_currency, month)
-
-write.csv(needed_rates, "needed_rates.csv", row.names = FALSE)
+  rates_needed <- na.omit(rates_needed)
+  cat(nrow(rates_needed), "rows")
+  rates_needed <- unique(rates_needed)
+  cat(nrow(rates_needed), "conversions needed")
+  
+write.csv(rates_needed, "needed_rates.csv", row.names = FALSE)
 
 # leggi i rate forniti (month in formato YYYY-MM-01)
 rates <- read.csv("provided_rates.csv", stringsAsFactors = FALSE) %>%
