@@ -4,7 +4,7 @@ library(ggplot2)
 library(scales)
 library(lubridate)
 
-files_list <- list.files(pattern = "\\.csv$", full.names = TRUE)
+files_list <- list.files(pattern = "main\\.csv$", full.names = TRUE)
 data <- lapply(files_list, read.csv, stringsAsFactors = FALSE)
 
 #track source file
@@ -88,11 +88,8 @@ combined <- combined %>%
 sum(is.na(combined$tender_value_currency))
 cols <- c("tender_minValue_currency", "planning_budget_amount_currency")
 combined <- combined[, !(names(combined) %in% cols)]
+combined <- combined %>% rename(currency = tender_value_currency)
 
-
-
-
-  
 #filter for furniture-related tender contenent
 cols <- c("tender_title","tender_description","tender_additionalProcurementCategory")
 keywords <- c("furniture")
@@ -106,21 +103,33 @@ df_filtered <- combined %>%
                       ifelse(is.na(tender_description), "", as.character(tender_description))),
                ignore.case = TRUE))
 
-
-
-rates_needed <- df_filtered %>%
-  select(tender_value_currency, date) %>%
+df_filtered <- df_filtered  %>%
   mutate(
-    date = lubridate::floor_date(date, unit = "month")  
+    month = lubridate::floor_date(date, unit = "month")  
     # primo giorno del mese
   )
-  rates_needed <- na.omit(rates_needed)
-  cat(nrow(rates_needed), "rows")
-  rates_needed <- unique(rates_needed)
-  cat(nrow(rates_needed), "conversions needed")
 
-  
-write.csv(rates_needed, "rates_needed.csv", row.names = FALSE)
+#. rates_needed <- df_filtered %>%
+#  select(tender_value_currency, month)
+#  rates_needed <- na.omit(rates_needed)
+#  cat(nrow(rates_needed), "rows")
+#  rates_needed <- unique(rates_needed)
+#  cat(nrow(rates_needed), "conversions needed")
+#write.csv(rates_needed, "rates_needed.csv", row.names = FALSE)
+
+historic_rates<- read.csv("monthly_fx_long.csv")
+historic_rates$date <- ymd(historic_rates$date)
+df_filtered$month <- ymd(df_filtered$month)
+left_join(df_filtered, historic_rates, by = c("month"= "date", "currency"="currency") )
+
+
+
+
+
+
+
+
+
 
 # leggi i rate forniti (month in formato YYYY-MM-01)
 rates <- read.csv("provided_rates.csv", stringsAsFactors = FALSE) %>%
