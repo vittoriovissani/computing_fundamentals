@@ -86,7 +86,7 @@ combined <- combined %>%
     planning_budget_amount_currency
   ))
 sum(is.na(combined$tender_value_currency))
-cols <- c("tender_minValue_currency", "planning_budget_amount_currency")
+cols <- c("tender_minValue_currency", "planning_budget_amount_currency", "tender_numberOfTenderers")
 combined <- combined[, !(names(combined) %in% cols)]
 combined <- combined %>% rename(currency = tender_value_currency)
 
@@ -120,25 +120,11 @@ df_filtered <- df_filtered  %>%
 historic_rates<- read.csv("monthly_fx_long.csv")
 historic_rates$date <- ymd(historic_rates$date)
 df_filtered$month <- ymd(df_filtered$month)
-left_join(df_filtered, historic_rates, by = c("month"= "date", "currency"="currency") )
-
-
-
-
-
-
-
-
-
-
-# leggi i rate forniti (month in formato YYYY-MM-01)
-rates <- read.csv("provided_rates.csv", stringsAsFactors = FALSE) %>%
-  mutate(month = as.Date(month))
-
-# aggancia ai dati originali usando month = primo del mese
-df_with_rates <- df_filtered %>%
-  mutate(month = as.Date(format(date, "%Y-%m-01"))) %>%
-  left_join(rates, by = c("tender_value_currency" = "currency", "month" = "month"))
+df_filtered <- left_join(df_filtered, historic_rates, by = c("month"= "date", "currency"="currency") )
+df_filtered <- df_filtered %>%
+  mutate(
+    value_usd = tender_value_amount/rate_units_per_usd
+  )
 
 options(scipen = 999)
 hist(df_filtered$tender_value_amount)
@@ -146,10 +132,16 @@ hist(df_filtered$tender_value_amount)
 Distribution <- ggplot(combined, aes(x = source)) +
   geom_bar(fill = "skyblue") +
   labs(title = "Furniture tender Distribution")
+
 print(Distribution)
 
+hist(df_filtered$value_usd, value_usd < 100000 )
+Distribution <- ggplot(df_filtered, aes(x = value_usd)) +
+  geom_bar(fill = "skyblue") +
+  labs(title = "Furniture tender Distribution")
+print(Distribution)
 
-d <- ggplot(df_filtered, aes(x = tender_value_amount, y = tender_numberOfTenderers)) +
+d <- ggplot(df_filtered, aes(x = value_usd, y = tender_numberOfTenderers)) +
   geom_point (fill = "black") +
   labs(title = "Furniture tender Distribution")+
   scale_x_continuous(breaks = pretty_breaks(n = 7)) 
