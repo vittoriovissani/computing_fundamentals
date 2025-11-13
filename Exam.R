@@ -127,13 +127,22 @@ df_filtered <- df_filtered %>%
   )
 
 options(scipen = 999)
-hist(df_filtered$tender_value_amount)
+df_filtered = filter(df_filtered,value_usd< 10000)
+df_filtered = filter(df_filtered,value_usd> 100)
+hist(df_filtered$value_usd)
 
+summary(df_filtered$value_usd)
 Distribution <- ggplot(combined, aes(x = source)) +
   geom_bar(fill = "skyblue") +
   labs(title = "Furniture tender Distribution")
 
-print(Distribution)
+aggregate(value_usd ~ source, df_filtered, mean)
+boxplot(df_filtered$value_usd ~ df_filtered$rating)
+
+plot(df_filtered$distance, df_filtered$rating)
+
+ggplot(data, aes(distance, price, color=rating)) +
+  geom_point()
 
 hist(df_filtered$value_usd, value_usd < 100000 )
 Distribution <- ggplot(df_filtered, aes(x = value_usd)) +
