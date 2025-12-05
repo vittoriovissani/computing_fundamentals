@@ -127,11 +127,61 @@ df_filtered <- df_filtered %>%
   )
 
 options(scipen = 999)
-df_filtered = filter(df_filtered,value_usd< 10000)
-df_filtered = filter(df_filtered,value_usd> 100)
-hist(df_filtered$value_usd)
+df_clean = filter(df_filtered,value_usd< 150000)
+df_clean = filter(df_clean,value_usd> 100)
 
-summary(df_filtered$value_usd)
+summary(df_clean$value_usd)
+hist(df_clean$value_usd)
+
+
+count_not_na <- function(x) sum(!is.na(x))
+
+df_stats <- df_clean %>%
+  summarise(across(everything(), count_not_na))
+
+df_stats <- df_stats %>%
+  select(order(-unlist(df_stats)))
+
+
+
+
+sort(desc)
+
+ggplot(data = df_clean, mapping = aes(x = source, y = value_usd))+
+  geom_boxplot() #tender frequency in different countries
+
+ggplot(df_clean, aes(x = value_usd, color = source))+
+  geom_density()
+
+ggplot(df_clean, aes(x = value_usd, color = source, fill = source))+
+  geom_density(alpha = 0.5)
+
+ggplot(df_clean, aes(x = sum(value_usd), y = source))+
+  geom_col()
+
+country_stats <- df_clean %>%
+  group_by(source)%>%
+  summarize(
+  n_tenders = sum(!(is.na(value_usd))),
+  market_size = sum(value_usd),
+  average_tender = sum(value_usd)/sum(!(is.na(value_usd))),
+  )
+
+ggplot(country_stats, aes( x = n_tenders, y = market_size)) +
+  geom_point(aes(color = source, size = average_tender))+
+  geom_smooth(method = "lm")
+
+  
+  
+
+
+  
+hist(df_filtered$value_usd, value_usd < 100000 )       
+
+
+
+
+
 Distribution <- ggplot(combined, aes(x = source)) +
   geom_bar(fill = "skyblue") +
   labs(title = "Furniture tender Distribution")
@@ -144,7 +194,7 @@ plot(df_filtered$distance, df_filtered$rating)
 ggplot(data, aes(distance, price, color=rating)) +
   geom_point()
 
-hist(df_filtered$value_usd, value_usd < 100000 )
+
 Distribution <- ggplot(df_filtered, aes(x = value_usd)) +
   geom_bar(fill = "skyblue") +
   labs(title = "Furniture tender Distribution")
@@ -155,10 +205,3 @@ d <- ggplot(df_filtered, aes(x = value_usd, y = tender_numberOfTenderers)) +
   labs(title = "Furniture tender Distribution")+
   scale_x_continuous(breaks = pretty_breaks(n = 7)) 
 print(d)
-
-
-
-
-
-
-
