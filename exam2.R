@@ -1,3 +1,4 @@
+setwd("~/Documents/Computing fundamentals/workspace esame/data-all-csv")
 library(data.table)
 library(vroom)
 library(dplyr)
@@ -36,7 +37,7 @@ files <- list.files(pattern = "data-all-")
 
 
 #sample to read column content
-sample <- read_csv2(files, n_max = 20)
+sample <- read_csv2(files, n_max = 500)
 names <- paste(as.character(names(sample)))
 
 # Mappa dei tipi per le colonne che ti servono
@@ -51,8 +52,7 @@ col_types <- c(
   "lot_estimatedPrice_EUR" = col_double(),
   "bid_row_nr" = col_integer(),
   "bid_price_EUR" = col_double(),
-  "bid_isWinning" = col_character(),
-  "cpv_code" = col_character()
+  "bid_isWinning" = col_character()
 )
 
 
@@ -62,10 +62,44 @@ df_all <- rbindlist(lapply(files, function(f) {
   fread(f, sep = ";",colClasses = col_types, select = c( 
     "tender_id","tender_mainCpv","tender_cpvs","tender_procedureType","lot_lotId",
     "lot_selectionMethod","lot_validBidsCount","lot_estimatedPrice_EUR","bid_row_nr",
-    "bid_price_EUR","bid_isWinning","cpv_code"
+    "bid_price_EUR","bid_isWinning"
     ))[tender_mainCpv %in% cpv_keep | grepl(paste(cpv_keep, collapse="|"), tender_cpvs)]
 }))
 
-
 toc()
 
+df<- sample %>%
+  group_by(tender_id) %>%
+  arrange(desc(publication_row_nr))
+  distinct()
+
+
+
+
+
+tenders <- sample %>%
+  group_by(tender_id)%>%
+  arrange(desc())
+  select(starts_with("tender")) %>%
+  distinct(tender_id, .keep_all = TRUE)%>%
+  filter(tender_row)
+  
+
+lots <- df_all %>%
+  filter(!is.na(lot_lotId)) %>%
+  arrange(tender_id, lot_lotId) %>%
+  distinct(lot_lotId, .keep_all = TRUE)
+
+lots <- sample %>%
+  select(starts_with("lot"),"tender_id")%>%
+  filter(!is.na(lot_lotId)) %>%
+  arrange(tender_id, lot_lotId) %>%
+  distinct(lot_lotId, .keep_all = TRUE)
+
+
+bids <- sample %>%
+  select(starts_with("bid"),"lot_lotId")%>%
+  filter(!is.na(bid_row_nr) & bid_row_nr != "")
+
+
+  
