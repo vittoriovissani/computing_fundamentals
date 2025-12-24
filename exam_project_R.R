@@ -12,9 +12,6 @@ setwd("~/Documents/Computing fundamentals/workspace esame/data-all-csv")
 # Esempio: 1000000 invece di 1e+06
 options(scipen = 999)
 
-
-# SEZIONE 2: CARICAMENTO E PREPARAZIONE DEI DATI
-
 # Definisco le colonne che mi servono per l'analisi
 colonne_utili <- c(
   "tender_id",              # Identificativo univoco della gara
@@ -37,9 +34,6 @@ cat("Caricamento dati in corso...\n")
 dati <- read_csv2("data-all-2022.csv", col_select = (colonne_utili))
 
 cat("Righe totali caricate:", nrow(dati), "\n")
-
-
-# SEZIONE 3: FILTRAGGIO E PULIZIA DEI DATI
 
 # Filtro per codici CPV del settore mobili
 # La funzione substr() estrae i primi 3 caratteri del codice CPV
@@ -68,9 +62,6 @@ cat("Offerte uniche:", nrow(dati_offerte), "\n")
 # gsub() sostituisce la virgola con il punto per il formato decimale
 dati_offerte$bid_price_EUR <- as.numeric(gsub(",", ".", dati_offerte$bid_price_EUR))
 
-
-# SEZIONE 4: STATISTICHE DESCRITTIVE
-
 # Filtro offerte con prezzo valido (positivo e non outlier estremi)
 dati_prezzi <- filter(dati_offerte, 
   !is.na(bid_price_EUR) & 
@@ -81,8 +72,8 @@ dati_prezzi <- filter(dati_offerte,
 
 cat("Offerte con prezzo valido:", nrow(dati_prezzi), "\n\n")
 
+# Distribuzione prezzi
 summary(dati_prezzi$bid_price_EUR)
-
 
 ggplot(dati_prezzi %>% filter(bid_price_EUR < 100000), 
        aes(x = bid_price_EUR)) +
@@ -110,7 +101,6 @@ ggplot(dati_prezzi %>% filter(bid_price_EUR < 500000),
 # Filtro solo le gare con dimensione specificata
 dati_size <- filter(dati_prezzi, !is.na(tender_size))
 
-
 # GRAFICO 1: Boxplot prezzi per dimensione gara
 # Il boxplot mostra: mediana (linea centrale), IQR (box), e outliers (punti)
 
@@ -126,10 +116,30 @@ ggplot(dati_size, aes(x = tender_size, y = bid_price_EUR, fill = tender_size)) +
 
 ggsave("grafico1_prezzi_per_size.png", width = 10, height = 6)
 
+# Analisi competizione
+# Calcolo il numero di offerte per ogni lotto usando bid unici
+# Evito duplicati contando bid_row_nr distinti per lot
+competizione <- dati_mobili %>%
+  distinct(lot_lotId, bid_row_nr, .keep_all = TRUE) %>%
+  filter(!is.na(lot_lotId)) %>%
+  group_by(tender_id, lot_lotId) %>%
+  summarise(n_offerte = n_distinct(bid_row_nr), .groups = "drop")
 
+summary(competizione$n_offerte)
+table(competizione$n_offerte)
 
-# SEZIONE 6: ANALISI 2 - PREZZI PER TIPO DI PROCEDURA
+# GRAFICO 3: Distribuzione del numero di offerte per lotto
+ggplot(competizione %>% filter(n_offerte <= 15), 
+       aes(x = factor(n_offerte))) +
+  geom_bar(fill = "coral", color = "darkred") +
+  labs(
+    title = "Numero di Offerte per Lotto",
+    subtitle = "Livello di competizione nelle gare di arredamento",
+    x = "Numero di Offerte",
+    y = "Conteggio Lotti"
+  )
 
+# Analisi procedura
 table(dati_prezzi$tender_procedureType)
 # Filtro procedure più comuni (almeno 50 osservazioni)
 dati_proc <- filter(dati_prezzi, !is.na(tender_procedureType))
@@ -163,31 +173,7 @@ ggplot(filter(dati_proc, tender_procedureType %in% procedure_principali),
   theme_minimal() +
   theme(legend.position = "none")
 
-
-dati_proc %>%
-  distinct(lot_lotId, .keep_all = TRUE) %>%
-  group_by(tender_procedureType) %>%
-  summarise(n_gare = n()) %>%
-  arrange(desc(n_gare)) %>%
-  head(10) %>%  # Top 10 paesi
-  
-  ggplot(aes(x = reorder(tender_country, n_gare), y = n_gare)) +
-  geom_col(fill = "steelblue") +
-  coord_flip() +
-  labs(
-    title = "Numero di Gare per Paese",
-    subtitle = "Top 10 paesi - Settore Arredamento",
-    x = "Paese",
-    y = "Numero di Gare"
-  )
-
-
-
-
-
-
-#DISTRIBUZIONE GEOGRAFICA
-
+# Analisi geografia
 # Conteggio gare per paese
 dati_mobili %>%
   filter(!is.na(tender_country)) %>%
@@ -206,7 +192,6 @@ ggplot(aes(x = reorder(tender_country, n_gare), y = n_gare)) +
     y = "Numero di Gare"
   )
 
-
 dati_mobili %>%
   distinct(lot_lotId, bid_row_nr, .keep_all = TRUE) %>%
   filter(bid_isWinning == "yes")%>%
@@ -222,7 +207,6 @@ ggplot(aes(x= n_lots, y = overall_value, color = tender_country, size = overall_
   scale_y_log10()+
   geom_point()
 
-
 # GRAFICO 4: Boxplot confronto prezzi per paese
 ggplot(dati_mobili %>% filter(bid_price_EUR < 100000), 
        aes(x = tender_country, y = bid_price_EUR, fill = tender_country)) +
@@ -235,33 +219,23 @@ ggplot(dati_mobili %>% filter(bid_price_EUR < 100000),
   ) +
   theme(legend.position = "none")
 
-
-# Calcolo il numero di offerte per ogni lotto usando bid unici
-# Evito duplicati contando bid_row_nr distinti per lot
-competizione <- dati_mobili %>%
-  distinct(lot_lotId, bid_row_nr, .keep_all = TRUE) %>%
-  filter(!is.na(lot_lotId)) %>%
-  group_by(tender_id, lot_lotId) %>%
-  summarise(n_offerte = n_distinct(bid_row_nr), .groups = "drop")
-
-summary(competizione$n_offerte)
-table(competizione$n_offerte)
-
-# GRAFICO 3: Distribuzione del numero di offerte per lotto
-ggplot(competizione %>% filter(n_offerte <= 15), 
-       aes(x = factor(n_offerte))) +
-  geom_bar(fill = "coral", color = "darkred") +
+dati_proc %>%
+  distinct(lot_lotId, .keep_all = TRUE) %>%
+  group_by(tender_procedureType) %>%
+  summarise(n_gare = n()) %>%
+  arrange(desc(n_gare)) %>%
+  head(10) %>%  # Top 10 paesi
+  
+  ggplot(aes(x = reorder(tender_country, n_gare), y = n_gare)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
   labs(
-    title = "Numero di Offerte per Lotto",
-    subtitle = "Livello di competizione nelle gare di arredamento",
-    x = "Numero di Offerte",
-    y = "Conteggio Lotti"
+    title = "Numero di Gare per Paese",
+    subtitle = "Top 10 paesi - Settore Arredamento",
+    x = "Paese",
+    y = "Numero di Gare"
   )
-
 
 bids <- dati_mobili %>%
   distinct(lot_lotId, bid_row_nr, .keep_all = TRUE)
 table(bids$bid_isWinning)
-
-
-
