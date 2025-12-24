@@ -52,7 +52,8 @@ colonne_utili <- c(
   "lot_lotId",              # Identificativo del lotto
   "bid_row_nr",             # Numero riga offerta (per identificare offerte uniche)
   "bid_price_EUR",          # Prezzo offerto in Euro
-  "publication_row_nr"      # Numero pubblicazione (per gestire aggiornamenti)
+  "publication_row_nr",     # Numero pubblicazione (per gestire aggiornamenti)
+  "bid_isWinning"           # Indica se l'offerta è vincente
 )
 
 # Carico i dati del 2022
@@ -131,19 +132,12 @@ summary(dati_prezzi$bid_price_EUR)
 ggplot(dati_prezzi %>% filter(bid_price_EUR < 100000), 
        aes(x = bid_price_EUR)) +
   geom_histogram(fill = "steelblue", color = "white", bins = 30) +
-  geom_vline(aes(xintercept = mediana_prezzo), 
-             color = "red", linetype = "dashed", linewidth = 1) +
   labs(
     title = "Distribuzione dei Prezzi delle Offerte",
     subtitle = "Settore Arredamento - Gare < 100.000 EUR",
     x = "Prezzo Offerta (EUR)",
     y = "Frequenza"
-  ) +
-  annotate("text", x = mediana_prezzo + 5000, y = Inf, 
-           label = paste("Mediana:", round(mediana_prezzo, 0), "EUR"),
-           vjust = 2, color = "red")
-
-ggsave("grafico1_distribuzione_prezzi.png", width = 8, height = 6)
+  ) 
 
 # GRAFICO 2: Boxplot dei prezzi
 ggplot(dati_prezzi %>% filter(bid_price_EUR < 500000), 
@@ -247,6 +241,7 @@ gare_per_paese <- dati_mobili %>%
   summarise(n_gare = n()) %>%
   arrange(desc(n_gare)) %>%
   head(10) %>%  # Top 10 paesi
+  
 ggplot(aes(x = reorder(tender_country, n_gare), y = n_gare)) +
   geom_col(fill = "steelblue") +
   coord_flip() +
@@ -257,22 +252,8 @@ ggplot(aes(x = reorder(tender_country, n_gare), y = n_gare)) +
     y = "Numero di Gare"
   )
 
-top_countries <- dati_mobili %>%
-  filter(!is.na(tender_country)) %>%
-  distinct(tender_id, .keep_all = TRUE) %>%
-  group_by(tender_country) %>%
-  summarise(n_gare = n()) %>%
-  arrange(desc(n_gare)) %>%
-  head(10) 
-
-ggplot(top_countries, aes(x = reorder(tender_country, -n_gare), y = n_gare)) +
-  geom_col( fill = "skyblue") +
-  labs(title = "Numero di Gare per Paese",
-      x = "Paese",
-      y = "Numero di Gare")
-
 # GRAFICO 4: Boxplot confronto prezzi per paese
-ggplot(dati_per_paese %>% filter(bid_price_EUR < 100000), 
+ggplot(dati_mobili %>% filter(bid_price_EUR < 100000), 
        aes(x = tender_country, y = bid_price_EUR, fill = tender_country)) +
   geom_boxplot(alpha = 0.7) +
   labs(
@@ -283,7 +264,6 @@ ggplot(dati_per_paese %>% filter(bid_price_EUR < 100000),
   ) +
   theme(legend.position = "none")
 
-ggsave("grafico4_vincenti_vs_non_vincenti.png", width = 8, height = 6)
 
 
 # -----------------------------------------------------------------------------
@@ -298,16 +278,12 @@ cat("\n=== ANALISI 2: COMPETIZIONE NELLE GARE ===\n")
 
 # Calcolo il numero di offerte per ogni lotto usando bid unici
 # Evito duplicati contando bid_row_nr distinti per lot
-competizione <- dati_bid_unici %>%
+competizione <- dati_mobili %>%
+  distinct(lot_lotId, bid_row_nr, .keep_all = TRUE) %>%
   filter(!is.na(lot_lotId)) %>%
   group_by(tender_id, lot_lotId) %>%
   summarise(n_offerte = n_distinct(bid_row_nr), .groups = "drop")
 
-# Statistiche sulla competizione
-cat("Numero medio offerte per lotto:", 
-    round(mean(competizione$n_offerte), 2), "\n")
-cat("Mediana offerte per lotto:", 
-    median(competizione$n_offerte), "\n")
 summary(competizione$n_offerte)
 
 # Tabella di frequenza
@@ -325,8 +301,6 @@ ggplot(competizione %>% filter(n_offerte <= 15),
     x = "Numero di Offerte",
     y = "Conteggio Lotti"
   )
-
-
 
 # GRAFICO 4: Scatterplot con linea di regressione
 # geom_point() crea lo scatterplot
