@@ -1,0 +1,170 @@
+set verbose off
+
+# 3rd lesson, Thursday November 20, 2025
+
+open mp3.xls
+list X=folder artist song year
+
+
+# loops in gretl ("for", "foreach", "while")
+
+scalar ini=200
+scalar fin=225
+
+loop for i=ini..fin
+    printf "artist no. %g: %s\n",i,artist[i]
+endloop
+
+#------------------------------------------------------------------------------------------------
+# 4th lesson, Friday November 21, 2025
+
+
+loop for (i=0.01; i<=0.2; i+=.01)
+    i
+    #print i
+endloop
+
+print " "
+
+scalar j=0
+loop 20 --progressive
+    j++
+    j
+    print j #prints mean and std. deviation (useful for simulations)
+endloop
+
+
+loop foreach i X
+    i
+    print varname($i)
+    series y_$i=$i
+endloop
+
+
+scalar ref=0
+scalar S=0
+
+loop while S<10000
+    ref++
+    S += year[ref]
+    printf "iteration=%g --- S=%g\n",ref,S
+endloop 
+
+
+
+# if statements/logical functions
+
+# (a) strings
+string g="Giulio"
+scalar x=7
+
+# 1. single 'if'
+if g=="Roberto"
+    x=1
+endif
+
+printf "x=%g\n",x
+
+
+# 2. single 'if' with alternative
+if g=="Mara"
+    x=1
+else
+    x=0
+endif
+    
+printf "\nx=%g\n",x
+
+
+# 3. multiple 'if' 
+if g=="Mara"
+    x=1
+elif g=="Giulio"
+    x=2
+else
+    x=0
+endif
+
+printf "\nx=%g\n",x
+
+
+
+# (b) scalars
+x=7
+
+print " "
+
+# 1. single 'if'
+if x>2
+    print "it's ok!"
+endif
+
+
+
+# 2. single 'if' with alternative
+if x>2
+    print "it's ok!"
+else
+    print "oh no!"
+endif
+
+
+
+# 3. multiple 'if' 
+if x<=6
+    print "it's ok!"
+elif x==7
+    print "this is perfection!"
+elif x>7
+    print "oh no!"
+endif
+
+
+
+# 4. multiple 'if' with alternative
+if x<=6
+    print "it's ok!"
+elif x==7
+    print "this is perfection!"
+else
+    print "oh no!"
+endif
+
+print " "
+
+
+
+
+# (a) series (and scalars)
+
+series great=0
+series cut=0
+series equal=0
+
+scalar N=$nobs
+
+loop for i=1..N
+    if year[i]>2000
+        great[i]=1
+    else
+        great[i]=0
+    endif
+endloop
+
+
+loop for i=1..N
+    if year[i]>2000
+        cut[i]=year[i]
+    else
+        cut[i]=0
+    endif
+endloop
+
+loop for i=1..N
+    if year[i]==2000
+        equal[i]=2000
+    else
+        equal[i]=0
+    endif
+endloop
+

@@ -1,0 +1,201 @@
+set verbose off
+
+open mp3.xls
+list X=folder artist song year
+matrix y={year}
+
+
+#------------------------------------------------------------------------------------------------
+# 5th lesson, Tuesday November 25, 2025
+
+# Using matrices
+# 1. Creating a matrix by hand
+
+matrix A={1,2;3,4}
+A
+
+# 2. Creating a matrix from a series
+
+matrix y={year}
+#y
+
+# 3. Creating a matrix using functions: zeros, ones, seq, I
+
+matrix O=zeros(2,2)
+O
+matrix B=ones(8,8)
+B
+matrix s=seq(1,8)'
+s
+
+matrix BB=5*B
+BB
+
+matrix II=I(2)
+II
+
+
+# 4. Creating a matrix from matrices (Counters: rows, cols, nelem; Functions: ~ and |)
+
+matrix SB=B[2:,1:3]
+SB
+
+matrix D={1,2,0,4;0,1,2,4;4,0,2,1}
+matrix cc={2,4}
+
+matrix D1=D[1:2,cc]
+D
+D1
+
+# horizontal 'attachment'
+matrix E=s~B
+E
+
+# vertical 'attachment'
+matrix F=B|BB
+F
+
+eval rows(B)
+eval cols(B)
+eval nelem(B)
+
+# 5. Creating a matrix using loops: definition and building
+
+scalar r=rows(A)
+scalar c=cols(A)
+matrix G=zeros(r,c)
+scalar k=0
+
+loop for i=1..r
+    loop for j=1..c
+        k++
+        G[i,j]=k
+    endloop
+endloop
+G
+        
+
+#------------------------------------------------------------------------------------------------
+# 6th lesson, Thursday November 27, 2025
+
+# 6. Basic operations:
+
+# Define matrices (by hand)
+matrix M={1,2,3;4,5,6;7,8,9}
+matrix In=I(3)
+matrix Q=M~I(3)
+
+print "matrices:"
+eval M 
+eval In
+eval Q
+eval M~In
+
+print "sums:"
+eval M+In
+eval M-In
+
+print "products"
+matrix AA={0,1,1;1,2,2}
+matrix BB={3,0;1,1}
+
+#STANDARD PRODUCT (ROWS times COLUMNS)
+
+#eval AA*BB  #matrices do not conform! 
+             #(number of columns of the pre-multiplying matrix differs 
+             #from the number of rows of the post-multiplyng matrix) 
+             
+eval BB*AA
+
+#HADAMARD PRODUCT (ELEMENT by ELEMENT PRODUCT)
+eval M.*In
+
+# 7. Operators: ',.^, sqrt, abs, log, exp
+
+print "squares:"
+eval M.^2
+eval M^2
+eval M*M
+
+print "square roots"
+eval sqrt(M)
+eval M.^(1/2)
+
+print "absolute value:"
+matrix P={1,-1,0;-2,-3,1}
+eval P
+#eval abs(P)
+
+eval exp(P)
+eval log(P)
+
+print "Basic statistics"
+
+eval M
+eval sumc(M)
+eval sumr(M)
+eval sumr(sumc(M))
+eval meanc(M)
+eval meanr(M)
+eval minc(M)
+eval maxc(M)
+eval minr(M)
+eval maxr(M)
+eval sdc(M)
+eval sdc(M).^2  #variance
+eval quantile(M,0.5)  #median
+
+eval diag(M) #only for square matrices!
+
+
+# 9. Functions: msortby (only for matrices), mshape, vec, inv
+eval M~In
+eval msortby(M~In,5)
+
+eval mshape(M~In,1,18)
+eval mshape(M~In,2,9)
+eval mshape(M~In,6,3)
+
+eval mshape(M~In,18,1)~vec(M~In)
+
+#------------------------------------------------------------------------------------------------
+# 7th lesson, Friday November 28, 2025
+
+#Logical 
+
+scalar N=$nobs
+
+matrix mgreat=(y.>2000.?1.:0)
+matrix mcut=(y.>2000.?y:0)
+matrix mequal=(y.=2000.?y:0)
+
+
+matrix out=mgreat~mcut~mequal
+out
+
+
+strings C=defarray("dummy","greater","equal")
+strings R=artist
+
+scalar opt=1
+
+
+
+if opt  # Using a numerical id as a new column
+    matrix tmp=seq(1,N)'
+    out=tmp~out
+    C=defarray("id","dummy","greater","equal")
+else # putting the id in rsname
+    loop for i=1..N
+        R[i]=sprintf("%g",i)
+    endloop
+endif
+
+
+rnameset(out,R)
+cnameset(out,C)
+print out
+
+
+
+
