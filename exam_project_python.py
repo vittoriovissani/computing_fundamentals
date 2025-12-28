@@ -32,6 +32,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Enable non-blocking plots: figures display without stopping code execution
+# plt.ion(): interactive mode ON - plots show immediately and code continues
+plt.ion()
+
 # Set display options for pandas
 # pd.set_option() changes global display settings
 # 'display.max_columns', None: show all columns when printing DataFrames
@@ -148,6 +152,7 @@ plt.title('Bid Price Distribution\nFurniture Sector - Bids < 100,000 EUR')
 plt.xlabel('Bid Price (EUR)')
 plt.ylabel('Frequency')
 plt.tight_layout()
+plt.show()
 
 # Boxplot: Overall price distribution
 # plt.boxplot(): creates boxplot
@@ -159,6 +164,7 @@ plt.boxplot(price_under_500k.dropna(), vert=False, patch_artist=True,
 plt.title('Bid Price Boxplot\nFurniture Sector 2022')
 plt.xlabel('Bid Price (EUR)')
 plt.tight_layout()
+plt.show()
 
 # Boxplot: Prices by tender size
 # .groupby(): groups data by category
@@ -184,6 +190,7 @@ plt.xlabel('Tender Size')
 plt.ylabel('Bid Price (EUR)')
 plt.tight_layout()
 plt.savefig('price_by_size.png', dpi=150)
+plt.show()
 
 # ==============================================================================
 # 4. COMPETITION ANALYSIS (BIDS PER LOT)
@@ -217,6 +224,7 @@ plt.title('Number of Bids per Lot\nCompetition Level in Furniture Tenders')
 plt.xlabel('Number of Bids')
 plt.ylabel('Lot Count')
 plt.tight_layout()
+plt.show()
 
 # Winning bids summary
 bids_summary = furniture_data.drop_duplicates(subset=['lot_lotId', 'bid_row_nr'])
@@ -267,6 +275,7 @@ plt.title('Price Distribution by Procedure Type\nLog Scale - Furniture Sector 20
 plt.xlabel('Procedure Type')
 plt.ylabel('Bid Price (EUR)')
 plt.tight_layout()
+plt.show()
 
 # Bar chart: Lots by procedure type
 proc_lots = proc_data.drop_duplicates(subset=['lot_lotId'])
@@ -279,6 +288,7 @@ plt.title('Number of Lots by Procedure Type\nTop 10 Procedures - Furniture Secto
 plt.xlabel('Number of Lots')
 plt.ylabel('Procedure Type')
 plt.tight_layout()
+plt.show()
 
 # ==============================================================================
 # 6. GEOGRAPHICAL ANALYSIS
@@ -295,6 +305,7 @@ plt.title('Number of Tenders by Country\nTop 10 Countries - Furniture Sector')
 plt.xlabel('Number of Tenders')
 plt.ylabel('Country')
 plt.tight_layout()
+plt.show()
 
 # Scatter plot: Lots vs Total Value by country
 furniture_data_price = furniture_data.copy()
@@ -337,6 +348,7 @@ plt.title('Market Size by Country\nWinning Bids - Lots vs Total Value')
 plt.xlabel('Number of Lots')
 plt.ylabel('Total Value (EUR)')
 plt.tight_layout()
+plt.show()
 
 # Boxplot: Prices by country
 country_prices = furniture_data_price[
@@ -361,6 +373,7 @@ plt.title('Price Distribution by Country\nFurniture Sector - Bids < 100,000 EUR 
 plt.xlabel('Country')
 plt.ylabel('Bid Price (EUR)')
 plt.tight_layout()
+plt.show()
 
 print("\n" + "="*60)
 print("ANALYSIS COMPLETE")
