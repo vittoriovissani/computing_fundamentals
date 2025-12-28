@@ -189,6 +189,7 @@ ggsave("grafico1_distribuzione_prezzi.png", width = 8, height = 6)
 ggplot(dati_prezzi %>% filter(bid_price_EUR < 500000), 
        aes(y = bid_price_EUR)) +
   geom_boxplot(fill = "lightblue", color = "darkblue") +
+  coord_flip()+
   labs(
     title = "Boxplot dei Prezzi delle Offerte",
     subtitle = "Settore Arredamento",
@@ -215,6 +216,7 @@ cat("Numero medio offerte per lotto:",
     round(mean(competizione$n_offerte), 2), "\n")
 cat("Mediana offerte per lotto:", 
     median(competizione$n_offerte), "\n")
+summary(competizione$n_offerte)
 
 # Tabella di frequenza
 tabella_competizione <- table(competizione$n_offerte)
