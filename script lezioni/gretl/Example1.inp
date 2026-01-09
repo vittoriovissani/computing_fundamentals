@@ -1,0 +1,104 @@
+# 1st lesson, Friday November 14, 2025
+
+# Start using gretl
+print "Hello world!"
+
+# open the data file
+open mp3.xls
+
+# create a list
+list X=folder artist song year
+
+# create a couple of matrices
+matrix y={year}
+matrix m={mins}
+
+# create an array of matrices
+matrices MAT=null
+MAT +=y
+MAT +=m
+
+eval MAT
+#---------------------------------------------------------------
+# 2nd lesson, Tuesday November 18, 2025
+
+# scalar generation
+scalar a=sqrt(7)
+
+# 4 print commands
+a
+eval a
+printf "%g\n",a
+print a
+
+# create a couple of strings
+string g="Giulio"
+string k="Mara"
+
+# 4 print commands (the same as above)
+g
+eval g
+printf "%s\n",g
+print g
+
+# simply 2 decimal digits
+printf "%s is my prof. and he likes number %.2f\n",g,a
+# revised
+printf "\t %s is my prof. and he likes number %10.2f\n",g,a
+print g
+
+scalar perc=50
+#percentages
+print "The percentage is 50%"
+printf "The percentage is %g%%\n",perc
+
+# create an array of strings
+strings ST=null
+ST +=g
+ST +=k
+ST +="e1"
+ST +="e2"
+ST +="e3"
+ST +="e4"
+ST +="e5"
+ST +="e6"
+ST +="e7"
+ST +="e8"
+ST +="e9"
+ST +="e10"
+ST +="e11"
+ST +="e12"
+
+eval ST
+eval ST[5:]
+eval ST[5:9]
+
+#---------------------------------------------------------------
+# 3rd lesson, Thursday November 20, 2025
+
+# print series elements
+printf "1 \t 2\t %g\n",year[7]
+printf "1 \t 2\t %g\n",year[8]
+print artist --range=512:519
+
+
+# Alternative array definitions
+matrices MMM=defarray(y,m)
+MMM
+
+strings SSS=defarray(g,k)
+SSS
+
+# series names
+string v=varname(year)
+eval v
+#eval year  #(this prints all values)
+#year
+
+strings vvv=varnames(X)
+eval vvv   
+eval X
+#X          #(this prints all values)
+# print X
+
+

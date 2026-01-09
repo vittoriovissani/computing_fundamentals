@@ -1,0 +1,167 @@
+set verbose off
+open EconomicsUSA.gdt
+
+# part 1: Functions
+
+function matrix EstimateParams(series y)
+    
+    scalar T=$nobs
+   
+    series t=$time
+    
+    scalar mT=(T+1)/2
+    scalar vT=T*(T+1)/12
+    scalar cT=(sum(time*y)-T*(mean(y)*(T+1)/2))/(T-1)
+    
+    scalar ybar=mean(y)
+        
+    scalar beta=cT/vT
+    scalar alpha=ybar-beta*mT
+    
+    return {alpha;beta}
+end function
+
+# See gretl help, pagg 347-348 (section 35.4)
+
+function scalar ME(series actual, series forecast)
+
+    series e=actual-forecast
+    scalar ME=mean(e)
+    
+    return ME
+end function
+
+function scalar RMSE(series actual, series forecast)
+
+    series e=actual-forecast
+    scalar RMSE=sqrt(mean(e^2))
+    
+    return RMSE
+end function
+
+function scalar MAE(series actual, series forecast)
+
+    series e=actual-forecast
+    scalar MAE=mean(abs(e))
+    
+    return MAE
+end function
+
+function scalar MPE(series actual, series forecast)
+
+    series e=(actual-forecast)/actual
+    scalar MPE=mean(100*e)
+    
+    return MPE
+end function
+
+function scalar MAPE(series actual, series forecast)
+
+    series e=abs((actual-forecast)/actual)
+    scalar MAPE=mean(100*e)
+    
+    return MAPE
+end function
+
+function scalar TheilU(series actual, series forecast)
+    
+    #U2 for time series
+      
+    scalar U=mean(((forecast(+1)-actual(+1))/actual)^2)/mean(((actual(+1)-actual)/actual)^2)   #0<U1<1 (Normalized index)
+    
+    return U
+end function
+
+
+function matrix MSE(series actual, series forecast)
+    
+    #U2 for time series
+    scalar T=$nobs
+    scalar scale=(T-1)/T
+    
+    scalar y=mean(actual)
+    scalar f=mean(forecast)
+    scalar sy=sqrt(scale*var(actual))
+    scalar sf=sqrt(scale*var(forecast))
+    scalar r=corr(actual,forecast)
+    
+    matrix num={(y-f)^2;(sf-r*sy)^2;(1-r^2)*sy^2}
+    scalar MSE=sumc(num)
+    matrix out=num/MSE
+       
+    return MSE|out
+end function
+
+#----------------------------------------------------------------------------------------------
+
+# PRESENTATION:
+
+# 1. Preliminary object definitions
+
+list X=indpro cpiaucsl
+scalar n=nelem(X)
+list FORECAST=null
+
+# 2. Data & plots
+summary X 
+gnuplot X --time-series --with-lines --output=display
+
+
+# 2. Aim of the work: detrend series and provide some forecast evaluations
+
+# 3. Code
+
+# filter 1: OLS detrendization (see 'Detrend.pdf' file)
+
+loop for i=1..n
+    matrix par=EstimateParams(X[i])
+
+    printf "Estimated (linear) trend function for time series %s:\n",varname(X[i])
+    printf "\t TT=%g+%gt\n",par[1],par[2]
+    series TREND_$i=par[1]+par[2]*t
+    
+    #series f_$i=X[i]-TREND_$i
+    gnuplot X[i] TREND_$i --time-series --with-lines --output=display
+    FORECAST+=TREND_$i
+    #check	
+    ols X[i] 0 time
+endloop
+
+
+# filter 2: Moving average
+
+scalar order=4
+
+loop for i=1..n
+    series MA_$i=movavg(X[i],order)
+    gnuplot X[i] MA_$i --time-series --with-lines --output=display
+    FORECAST+=MA_$i
+endloop
+
+
+matrix output={}     #empty matrix (initialization)
+strings model=null   #empty array of strings (initialization)
+scalar F=nelem(FORECAST)  #the list F contains all the forecast series
+X+=X                 # re-define list X=indpro cpiaucsl indpro cpiaucsl
+
+
+loop for j=1..F
+    series y=X[j]
+    series yhat=FORECAST[j]
+    output~=(ME(y,yhat)|RMSE(y,yhat)|MAE(y,yhat)|MPE(y,yhat)|MAPE(y,yhat)|TheilU(y,yhat)|MSE(y,yhat)[1]|MSE(y,yhat)[2]|MSE(y,yhat)[3]|MSE(y,yhat)[4])
+    model+=varname(FORECAST[j])
+endloop
+
+
+strings stats=defarray("Mean Error (ME)","Root Mean Square Error (RMSE)","Mean Absolute Error (MAE)","Mean Percentage Error (MPE)",
+  "Mean Absolute Percentage Error (MAPE)","Theil's U (U2)","Mean Squared Error (MSE)"," Bias proportion (UM)"," Regression proportion (UR)"," Disturbance proportion (UD)")
+
+
+print "Univariate forecast evaluation statistics"
+rnameset(output,stats)
+cnameset(output,model)
+print output
+
+
+# 4. FINAL COMMENTS
+

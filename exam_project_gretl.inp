@@ -1,0 +1,300 @@
+# ==============================================================================
+# EUROPEAN PUBLIC PROCUREMENT TIME SERIES ANALYSIS - FURNITURE SECTOR (CPV 391)
+# ==============================================================================
+# 
+# PROJECT OVERVIEW:
+# Time series analysis of European public tenders in the furniture sector
+# from 2008Q2 to 2024Q1. The study examines trends, seasonality, and 
+# relationships between market variables using regression analysis.
+#
+# DATA SOURCE: EU Open Data Portal - Public Procurement Dataset
+# SECTOR: Furniture (CPV code 391*)
+# PERIOD: 2008Q2 - 2024Q1 (quarterly aggregates)
+#
+# VARIABLES:
+# - n_contracts: Number of unique contracts awarded per quarter
+# - n_lots: Number of lots awarded per quarter
+# - total_value: Total value of contracts (EUR)
+# - avg_price: Average contract price (EUR)
+# - median_price: Median contract price (EUR)
+# - avg_bids: Average number of bids per lot (competition indicator)
+#
+# STRUCTURE:
+# 1. Data Loading & Setup
+# 2. Descriptive Statistics & Visualization
+# 3. Trend Analysis & Detrending
+# 4. Regression Analysis
+# 5. Forecast Evaluation
+# ==============================================================================
+
+set verbose off
+
+# ==============================================================================
+# 1. DATA LOADING & SETUP
+# ==============================================================================
+
+# Open the furniture sector quarterly time series data
+open furniture_quarterly_ts.csv
+
+# Set the data as quarterly time series starting from 2008Q2
+setobs 4 2008:2 --time-series
+
+# Create list of main variables for analysis
+list MAIN = n_contracts n_lots total_value avg_price avg_bids
+
+# Quick data summary
+print "FURNITURE SECTOR PROCUREMENT - TIME SERIES DATA"
+print ""
+
+summary MAIN
+
+# ==============================================================================
+# 2. DESCRIPTIVE STATISTICS & VISUALIZATION
+# ==============================================================================
+
+print ""
+print "SECTION 2: DATA VISUALIZATION"
+print ""
+
+# Plot: Number of contracts over time
+gnuplot n_contracts --time-series --with-lines --output=display { \
+    set title "Number of Furniture Contracts Awarded per Quarter (EU)"; \
+    set ylabel "Number of Contracts"; \
+}
+
+# Plot: Total market value over time
+gnuplot total_value --time-series --with-lines --output=display { \
+    set title "Total Value of Furniture Contracts per Quarter (EUR)"; \
+    set ylabel "Total Value (EUR)"; \
+}
+
+# Plot: Average price evolution
+gnuplot avg_price --time-series --with-lines --output=display { \
+    set title "Average Contract Price - Furniture Sector"; \
+    set ylabel "Average Price (EUR)"; \
+}
+
+# Plot: Competition level (average bids per lot)
+gnuplot avg_bids --time-series --with-lines --output=display { \
+    set title "Competition Level - Average Bids per Lot"; \
+    set ylabel "Average Number of Bids"; \
+}
+
+# Combined plot: Contracts and Value
+gnuplot n_contracts total_value --time-series --with-lines --output=display { \
+    set title "Market Activity: Contracts vs Total Value"; \
+    set y2tics; \
+}
+
+# ==============================================================================
+# 3. TREND ANALYSIS & DETRENDING
+# ==============================================================================
+
+print ""
+print "SECTION 3: TREND ANALYSIS"
+print ""
+
+# Create time trend variable
+series t = time
+
+# --- Linear Trend Estimation for Number of Contracts ---
+print ""
+print "Linear Trend Model: n_contracts = alpha + beta*t"
+ols n_contracts const t
+
+# Store fitted values
+series trend_contracts = $yhat
+series detrended_contracts = n_contracts - trend_contracts
+
+# Plot trend
+gnuplot n_contracts trend_contracts --time-series --with-lines --output=display { \
+    set title "Number of Contracts with Linear Trend"; \
+    set ylabel "Contracts"; \
+}
+
+# Plot detrended series
+gnuplot detrended_contracts --time-series --with-lines --output=display { \
+    set title "Detrended Number of Contracts"; \
+    set ylabel "Residuals"; \
+}
+
+# --- Linear Trend Estimation for Average Price ---
+print ""
+print "Linear Trend Model: avg_price = alpha + beta*t"
+ols avg_price const t
+
+series trend_price = $yhat
+series detrended_price = avg_price - trend_price
+
+gnuplot avg_price trend_price --time-series --with-lines --output=display { \
+    set title "Average Price with Linear Trend"; \
+    set ylabel "Price (EUR)"; \
+}
+
+# --- Moving Average Smoothing ---
+print ""
+print "Moving Average Smoothing (4-quarter window)"
+
+# 4-quarter moving average (annual smoothing for quarterly data)
+series ma_contracts = movavg(n_contracts, 4)
+series ma_value = movavg(total_value, 4)
+series ma_price = movavg(avg_price, 4)
+
+gnuplot n_contracts ma_contracts --time-series --with-lines --output=display { \
+    set title "Number of Contracts: Original vs 4-Quarter Moving Average"; \
+    set ylabel "Contracts"; \
+}
+
+gnuplot avg_price ma_price --time-series --with-lines --output=display { \
+    set title "Average Price: Original vs 4-Quarter Moving Average"; \
+    set ylabel "Price (EUR)"; \
+}
+
+# ==============================================================================
+# 4. REGRESSION ANALYSIS
+# ==============================================================================
+
+print ""
+print "SECTION 4: REGRESSION ANALYSIS"
+print ""
+
+# --- Model 1: Total Value explained by Number of Contracts ---
+print ""
+print "MODEL 1: total_value = f(n_contracts)"
+print "Does market activity (contracts) explain total market value?"
+ols total_value const n_contracts
+
+# Store residuals for diagnostics
+series resid1 = $uhat
+
+gnuplot total_value n_contracts --output=display { \
+    set title "Total Value vs Number of Contracts"; \
+    set xlabel "Number of Contracts"; \
+    set ylabel "Total Value (EUR)"; \
+}
+
+# --- Model 2: Average Price explained by Competition ---
+print ""
+print "MODEL 2: avg_price = f(avg_bids)"
+print "Does competition affect average prices?"
+ols avg_price const avg_bids
+
+gnuplot avg_price avg_bids --output=display { \
+    set title "Average Price vs Competition Level"; \
+    set xlabel "Average Bids per Lot"; \
+    set ylabel "Average Price (EUR)"; \
+}
+
+# --- Model 3: Multiple Regression with Trend ---
+print ""
+print "MODEL 3: total_value = f(n_contracts, avg_price, t)"
+print "Comprehensive model including trend"
+ols total_value const n_contracts avg_price t
+
+# --- Model 4: Log-Log Model (Elasticity) ---
+print ""
+print "MODEL 4: Log-Log Specification"
+print "ln(total_value) = alpha + beta*ln(n_contracts) + gamma*ln(avg_price)"
+
+# Create log transformations (handle zeros/missing)
+series ln_value = log(total_value)
+series ln_contracts = log(n_contracts)
+series ln_price = log(avg_price)
+
+ols ln_value const ln_contracts ln_price
+
+print ""
+print "Interpretation: Coefficients represent elasticities"
+print "E.g., a 1% increase in contracts leads to beta% increase in total value"
+
+# --- Model 5: Competition and Price Relationship ---
+print ""
+print "MODEL 5: Competition dynamics"
+print "avg_bids = f(avg_price, t)"
+print "How does price level and time affect competition?"
+ols avg_bids const avg_price t
+
+# ==============================================================================
+# 5. FORECAST EVALUATION (Using Trend Model)
+# ==============================================================================
+
+print ""
+print "SECTION 5: FORECAST EVALUATION"
+print ""
+
+# Define forecast evaluation functions
+function scalar ME(series actual, series forecast)
+    series e = actual - forecast
+    scalar ME = mean(e)
+    return ME
+end function
+
+function scalar RMSE(series actual, series forecast)
+    series e = actual - forecast
+    scalar RMSE = sqrt(mean(e^2))
+    return RMSE
+end function
+
+function scalar MAE(series actual, series forecast)
+    series e = actual - forecast
+    scalar MAE = mean(abs(e))
+    return MAE
+end function
+
+function scalar MAPE(series actual, series forecast)
+    series e = abs((actual - forecast) / actual)
+    scalar MAPE = mean(100 * e)
+    return MAPE
+end function
+
+# Evaluate trend forecast for n_contracts
+print ""
+print "Forecast Evaluation: Linear Trend Model for n_contracts"
+printf "Mean Error (ME):                    %.2f\n", ME(n_contracts, trend_contracts)
+printf "Root Mean Square Error (RMSE):      %.2f\n", RMSE(n_contracts, trend_contracts)
+printf "Mean Absolute Error (MAE):          %.2f\n", MAE(n_contracts, trend_contracts)
+printf "Mean Absolute Percentage Error:     %.2f%%\n", MAPE(n_contracts, trend_contracts)
+
+# Evaluate moving average forecast
+print ""
+print "Forecast Evaluation: 4-Quarter Moving Average for n_contracts"
+printf "Mean Error (ME):                    %.2f\n", ME(n_contracts, ma_contracts)
+printf "Root Mean Square Error (RMSE):      %.2f\n", RMSE(n_contracts, ma_contracts)
+printf "Mean Absolute Error (MAE):          %.2f\n", MAE(n_contracts, ma_contracts)
+printf "Mean Absolute Percentage Error:     %.2f%%\n", MAPE(n_contracts, ma_contracts)
+
+# ==============================================================================
+# 6. ADDITIONAL ANALYSIS: STRUCTURAL BREAKS
+# ==============================================================================
+
+print ""
+print "SECTION 6: STRUCTURAL ANALYSIS"
+print ""
+
+# Create dummy for COVID period (2020Q1 onwards = observation ~47)
+series covid_dummy = (t >= 47) ? 1 : 0
+
+print ""
+print "MODEL 6: Testing COVID impact on market activity"
+print "n_contracts = f(t, covid_dummy)"
+ols n_contracts const t covid_dummy
+
+print ""
+print "MODEL 7: Testing COVID impact on competition"
+print "avg_bids = f(t, covid_dummy)"  
+ols avg_bids const t covid_dummy
+
+# ==============================================================================
+# SUMMARY & CONCLUSIONS
+# ==============================================================================
+
+print ""
+print "ANALYSIS COMPLETE"
+print ""
+print "Key findings to discuss:"
+print "1. Trend patterns in furniture procurement over 2008-2024"
+print "2. Relationship between market activity and total value"
+print "3. Impact of competition on prices"
+print "4. COVID-19 structural break analysis"
+print "5. Forecast accuracy comparison (Trend vs Moving Average)"
+print ""
