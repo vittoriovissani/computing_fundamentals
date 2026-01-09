@@ -1,0 +1,205 @@
+# ==============================================================================
+# EUROPEAN PUBLIC PROCUREMENT (CPV 391) - TIME SERIES PROJECT (GRETL)
+# ==============================================================================
+#
+# Aim (exam-friendly):
+# 1) Describe how the EU furniture procurement market evolves over time
+#    using quarterly indicators: activity (n_tenders, n_lots), size (total_value)
+#    and typical winning prices (avg_lot_price, median_lot_price).
+# 2) Study competition dynamics: does competition (avg_bids) relate to prices?
+# 3) Provide basic time-series treatment: trend, smoothing, log/diff growth,
+#    simple forecasting and forecast evaluation.
+#
+# Data: furniture_quarterly_ts.csv created by extract_timeseries.py
+# Period: 2008Q2 ... (setobs is aligned to the first row in the CSV)
+#
+# Columns available:
+#   n_tenders, n_lots, total_value, avg_lot_price, median_lot_price,
+#   avg_bids, avg_valid_bids (missing for some older quarters)
+# ==============================================================================
+
+set verbose off
+
+# -----------------------------------------------------------------------------
+# 1. LOAD DATA AND SET TIME SERIES
+# -----------------------------------------------------------------------------
+
+open furniture_quarterly_ts.csv
+
+# First observation in the file is 2008Q2
+setobs 4 2008:2 --time-series
+
+list Y = n_tenders n_lots total_value avg_lot_price median_lot_price avg_bids
+
+print "="
+print "Furniture procurement (CPV 391) - Quarterly time series"
+print "="
+print ""
+
+summary Y
+
+# Quick plots (like in lectures)
+gnuplot n_tenders --time-series --with-lines --output=display { \
+    set title "Activity: number of tenders (quarterly)"; \
+    set ylabel "n_tenders"; \
+}
+
+gnuplot total_value --time-series --with-lines --output=display { \
+    set title "Market size: total awarded value (EUR, quarterly)"; \
+    set ylabel "total_value"; \
+}
+
+gnuplot avg_lot_price median_lot_price --time-series --with-lines --output=display { \
+    set title "Typical winning lot prices (mean vs median)"; \
+    set ylabel "EUR"; \
+}
+
+gnuplot avg_bids --time-series --with-lines --output=display { \
+    set title "Competition: average bids per lot"; \
+    set ylabel "avg_bids"; \
+}
+
+# -----------------------------------------------------------------------------
+# 2. BASIC TRANSFORMATIONS (logs and growth)
+# -----------------------------------------------------------------------------
+
+# time trend
+series t = time
+
+# log-levels (all positive by construction)
+series l_value = log(total_value)
+series l_price = log(avg_lot_price)
+series l_tenders = log(n_tenders)
+
+# quarterly growth rates (approx %) for market size and price
+series g_value = 100*(l_value - l_value(-1))
+series g_price = 100*(l_price - l_price(-1))
+
+gnuplot g_value --time-series --with-lines --output=display { \
+    set title "Growth rate: total_value (log-diff, % q/q)"; \
+    set ylabel "%"; \
+}
+
+gnuplot g_price --time-series --with-lines --output=display { \
+    set title "Growth rate: avg_lot_price (log-diff, % q/q)"; \
+    set ylabel "%"; \
+}
+
+# -----------------------------------------------------------------------------
+# 3. TREND + SMOOTHING (professor-style)
+# -----------------------------------------------------------------------------
+
+print ""
+print "--- Trend models (OLS on time) ---"
+
+print "Trend for log(total_value)"
+ols l_value const t
+series trend_l_value = $yhat
+series det_l_value = l_value - trend_l_value
+
+gnuplot l_value trend_l_value --time-series --with-lines --output=display { \
+    set title "Log(total value) with linear trend"; \
+}
+
+gnuplot det_l_value --time-series --with-lines --output=display { \
+    set title "Detrended log(total value)"; \
+}
+
+# Moving average smoothing (4-quarter window)
+series ma_l_value = movavg(l_value, 4)
+series ma_l_price = movavg(l_price, 4)
+
+gnuplot l_value ma_l_value --time-series --with-lines --output=display { \
+    set title "Log(total value): original vs 4Q moving average"; \
+}
+
+# -----------------------------------------------------------------------------
+# 4. REGRESSION MODELS (interpretation + time-series awareness)
+# -----------------------------------------------------------------------------
+
+print ""
+print "--- Regression analysis ---"
+
+# Model A: market size explained by activity (elasticity form)
+print ""
+print "Model A: log(total_value) = f(log(n_tenders), log(avg_lot_price), t)"
+ols l_value const l_tenders l_price t
+
+# Model B: competition and price relationship
+# (cross-check: higher competition might reduce prices; sign is empirical)
+print ""
+print "Model B: log(avg_lot_price) = f(avg_bids, t)"
+ols l_price const avg_bids t
+
+# Model C: activity explained by competition and trend
+print ""
+print "Model C: log(n_tenders) = f(avg_bids, t)"
+ols l_tenders const avg_bids t
+
+# OPTIONAL: use avg_valid_bids if present (handle missing by sample restriction)
+if $missing(avg_valid_bids) < $nobs
+    print ""
+    print "Model D (optional): log(avg_lot_price) = f(avg_valid_bids, t)"
+    ols l_price const avg_valid_bids t
+endif
+
+# -----------------------------------------------------------------------------
+# 5. SIMPLE FORECAST EVALUATION (like Deterend.inp)
+# -----------------------------------------------------------------------------
+
+function scalar ME(series actual, series forecast)
+    series e = actual - forecast
+    return mean(e)
+end function
+
+function scalar RMSE(series actual, series forecast)
+    series e = actual - forecast
+    return sqrt(mean(e^2))
+end function
+
+function scalar MAE(series actual, series forecast)
+    series e = actual - forecast
+    return mean(abs(e))
+end function
+
+function scalar MAPE(series actual, series forecast)
+    series e = abs((actual - forecast) / actual)
+    return mean(100*e)
+end function
+
+print ""
+print "--- Forecast evaluation (in-sample) ---"
+print "Target series: log(total_value)"
+
+printf "Trend forecast RMSE: %.4f\n", RMSE(l_value, trend_l_value)
+printf "Trend forecast MAE:  %.4f\n", MAE(l_value, trend_l_value)
+
+# moving average is shorter at the beginning -> avoid missing values by evaluating on common sample
+smpl --no-missing l_value ma_l_value
+
+print "(Common sample for moving average evaluation)"
+printf "MA(4) forecast RMSE: %.4f\n", RMSE(l_value, ma_l_value)
+printf "MA(4) forecast MAE:  %.4f\n", MAE(l_value, ma_l_value)
+
+smpl full
+
+# -----------------------------------------------------------------------------
+# 6. STRUCTURAL BREAK EXAMPLE (COVID shock)
+# -----------------------------------------------------------------------------
+
+# 2020Q1 is roughly observation number: (2020-2008)*4 + (1-2) + 1 = 47
+# We keep it simple as in an exam: a dummy from 2020Q1 onward.
+series covid = (t >= 47) ? 1 : 0
+
+print ""
+print "--- Structural break test (COVID dummy) ---"
+print "log(total_value) = f(log(n_tenders), log(avg_lot_price), t, covid)"
+ols l_value const l_tenders l_price t covid
+
+print ""
+print "="
+print "ANALYSIS COMPLETE"
+print "="
+print "Suggested discussion points: trend, seasonality (if visible), elasticities,"
+print "competition-price link, and the COVID dummy coefficient/significance."
+print ""
