@@ -146,7 +146,13 @@ def aggregate_monthly(df):
     df["lot_bidsCount"] = pd.to_numeric(df["lot_bidsCount"], errors="coerce")
     df["lot_validBidsCount"] = pd.to_numeric(df["lot_validBidsCount"], errors="coerce")
 
-    # 5) Define the unit of analysis for value: one winning observation per lot
+    # 5) Define lot-level competition indicators
+    # Use one row per (tender_id, lot_lotId) for lot_bidsCount.
+    lot_level = df.dropna(subset=["tender_id", "lot_lotId"]).copy()
+    lot_level = lot_level.drop_duplicates(subset=["tender_id", "lot_lotId"], keep="first")
+    lot_level["one_bid_lot"] = (lot_level["lot_bidsCount"] == 1).astype(float)
+
+    # 6) Define the unit of analysis for value: one winning observation per lot
     #    - Using bid_isWinning avoids counting all bids.
     #    - Dropping duplicates on (tender_id, lot_lotId) prevents double-counting
     #      if the exported data still contains multiple rows per lot.
@@ -167,6 +173,14 @@ def aggregate_monthly(df):
         avg_bids=("lot_bidsCount", "mean"),
         avg_valid_bids=("lot_validBidsCount", "mean"),
     ).reset_index()
+
+    # Add competition structure: lots with exactly one bid
+    one_bid = lot_level.groupby("year_month").agg(
+        n_lots_all=("lot_lotId", "nunique"),
+        n_lots_one_bid=("one_bid_lot", "sum"),
+        share_one_bid=("one_bid_lot", "mean"),
+    ).reset_index()
+    monthly = monthly.merge(one_bid, on="year_month", how="left")
 
     return monthly
 
@@ -258,6 +272,11 @@ def main():
     combined_q["lot_bidsCount"] = pd.to_numeric(combined_q["lot_bidsCount"], errors="coerce")
     combined_q["lot_validBidsCount"] = pd.to_numeric(combined_q["lot_validBidsCount"], errors="coerce")
 
+    # Lot-level competition indicators (one row per lot)
+    lot_level_q = combined_q.dropna(subset=["tender_id", "lot_lotId"]).copy()
+    lot_level_q = lot_level_q.drop_duplicates(subset=["tender_id", "lot_lotId"], keep="first")
+    lot_level_q["one_bid_lot"] = (lot_level_q["lot_bidsCount"] == 1).astype(float)
+
     winners_q = combined_q[combined_q["bid_isWinning"] == "yes"].copy()
     winners_q = winners_q.dropna(subset=["tender_id", "lot_lotId"])
     winners_q = winners_q.drop_duplicates(subset=["tender_id", "lot_lotId"], keep="first")
@@ -272,6 +291,13 @@ def main():
         avg_bids=("lot_bidsCount", "mean"),
         avg_valid_bids=("lot_validBidsCount", "mean"),
     ).reset_index()
+
+    one_bid_q = lot_level_q.groupby("year_quarter").agg(
+        n_lots_all=("lot_lotId", "nunique"),
+        n_lots_one_bid=("one_bid_lot", "sum"),
+        share_one_bid=("one_bid_lot", "mean"),
+    ).reset_index()
+    quarterly = quarterly.merge(one_bid_q, on="year_quarter", how="left")
     quarterly = quarterly.sort_values("year_quarter")
     quarterly["year_quarter"] = quarterly["year_quarter"].astype(str)
     
@@ -295,6 +321,8 @@ def main():
     print("  - median_lot_price: Median winning lot price (EUR)")
     print("  - avg_bids: Average total bids per lot (competition)")
     print("  - avg_valid_bids: Average valid bids per lot")
+    print("  - share_one_bid: Share of lots with exactly 1 bid (concentration risk)")
+    print("  - n_lots_one_bid: Count of one-bid lots per period")
 
 if __name__ == "__main__":
     main()

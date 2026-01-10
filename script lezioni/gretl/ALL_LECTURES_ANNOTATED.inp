@@ -1,0 +1,1076 @@
+# ==============================================================================
+# GRETL LECTURES - SINGLE COMBINED SCRIPT (ANNOTATED)
+# ==============================================================================
+# IMPORTANTE:
+# - Questo file è NUOVO.
+# - Contiene gli script originali del professore verbatim (inclusi i suoi commenti)
+#   e aggiunge spiegazioni extra *attorno* al codice.
+# - I file originali in questa cartella restano intatti (non modificati).
+#
+# Come usarlo:
+# - Puoi eseguire questo file dall'inizio alla fine (top-to-bottom).
+# - Alcune sezioni fanno open di dataset come mp3.xls o EconomicsUSA.gdt.
+#   Questi file devono essere disponibili (tipicamente nella stessa folder / working directory)
+#   perché i comandi funzionino.
+#
+# Note sulla sintassi Gretl (mini cheat sheet):
+# - I commenti iniziano con # e continuano fino a fine riga.
+# - scalar = numero singolo
+# - series  = time-series / vettore allineato alle observations
+# print stampa una stringa di testo nella finestra di output.
+# Le string in Gretl si scrivono tra virgolette doppie.
+# - string / strings = string singola / array di strings
+# - matrices = array di matrix
+# - loop ... endloop definisce i loop; if ... endif definisce le condizioni
+# - "eval" stampa espressioni/oggetti valutati in modo compatto
+# open carica un dataset in Gretl.
+# Qui prova ad aprire un file Excel chiamato mp3.xls (deve essere raggiungibile dalla working directory di Gretl).
+# ==============================================================================
+# FILE 1: Example1.inp (verbatim) + spiegazioni
+# ==============================================================================
+# Questa lezione introduce: printing, open di un file, list, matrix, array.
+# list crea una *lista di variabili* (series) a cui ti puoi riferire come gruppo.
+# Syntax: list NAME = var1 var2 var3 ...
+# 1st lesson, Friday November 14, 2025
+
+# Start using gretl
+# print prints a text string to the output window.
+# matrix crea un oggetto matrix.
+# {year} converte la series 'year' in una matrix (tipicamente N x 1) usando le braces.
+
+# open the data file
+# stessa idea per un'altra series: mins -> matrix m
+# Here it tries to open an Excel file named mp3.xls (must be accessible from Gretl's working directory).
+open mp3.xls
+
+# create a list
+# matrices è un *array di matrix* (container che può contenere molte matrix).
+# =null inizializza un array vuoto.
+list X=folder artist song year
+
+# "+=" fa append di elementi a un array (qui: aggiunge la matrix y come primo elemento).
+# matrix creates a matrix object.
+# {year} converts the series 'year' into a matrix (typically N x 1) using braces.
+# aggiunge la matrix m come elemento successivo.
+# same idea for another series: mins -> matrix m
+matrix m={mins}
+
+# eval stampa il contenuto/valore di un oggetto/espressione in modo compatto.
+# Qui stampa le matrix contenute in MAT.
+# =null initializes an empty array.
+matrices MAT=null
+# "+=" appends items to an array (here: add matrix y as the first element).
+# scalar è un numero singolo (non una series).
+# append matrix m as the next element.
+MAT +=m
+
+# Scrivere solo il nome (a) lo stampa in modo rapido/default.
+# Here it prints the matrices stored in MAT.
+eval MAT
+# eval a lo stampa via eval (spesso simile, ma utile per espressioni).
+# 2nd lesson, Tuesday November 18, 2025
+
+# scalar generation
+# printf è formatted printing (come il printf in C):
+# %g stampa un valore numerico in formato “general”; \n è newline.
+scalar a=sqrt(7)
+
+# print a stampa lo scalar usando print (spesso un po' più verboso).
+# Just writing the name (a) prints it in a quick/default way.
+a
+# eval a prints it via eval (often similar, but useful for expressions).
+# string è un singolo valore di testo.
+# printf is formatted printing (like C printf):
+# %g prints a numeric value with “general” format; \n is newline.
+printf "%g\n",a
+# print a prints the scalar using print (often a bit more verbose).
+# Puoi stampare le string nello stesso modo.
+
+# create a couple of strings
+# string is a single text value.
+# %s è il placeholder per una string.
+string k="Mara"
+
+# 4 print commands (the same as above)
+# You can print strings the same ways.
+# %.2f stampa un floating number con 2 cifre dopo la virgola.
+eval g
+# %s is the placeholder for a string.
+# revisionato
+# \\t è un tab.
+# %10.2f stampa un float in un campo di larghezza 10 con 2 decimali (alignment).
+# simply 2 decimal digits
+# %.2f prints a floating number with 2 digits after the decimal point.
+printf "%s is my prof. and he likes number %.2f\n",g,a
+# revised
+# Nota: dentro una normale string literal, % è solo un carattere.
+# %10.2f prints a float in a field of width 10 with 2 decimals (alignment).
+printf "\t %s is my prof. and he likes number %10.2f\n",g,a
+# In printf, % inizia un format placeholder, quindi per stampare un % letterale si scrive %%.
+
+scalar perc=50
+#percentages
+# strings è un array (vector) di valori string.
+print "The percentage is 50%"
+# Si parte con un array vuoto: null.
+printf "The percentage is %g%%\n",perc
+
+# Append di più string (una per una).
+# strings is an array (vector) of string values.
+# Start with empty array: null.
+strings ST=null
+# Stampa l'intero array di string.
+ST +=g
+ST +=k
+# ST[5:] significa “dall'elemento 5 fino alla fine” (array slicing).
+ST +="e2"
+# L'indexing è spesso 1-based in molti contesti Gretl; per gli array Gretl supporta anche slice così.
+ST +="e4"
+ST +="e5"
+# ST[5:9] significa elementi da 5 a 9.
+ST +="e7"
+ST +="e8"
+ST +="e9"
+# year[7] accede alla 7ª observation della series year.
+ST +="e11"
+# La format string mostra tab tra le colonne.
+
+# Print the whole string array.
+eval ST
+# print artist --range=512:519 stampa solo le observations 512..519 per la series 'artist'.
+# Indexing is 1-based in many Gretl contexts; for arrays, Gretl also supports slices like this.
+eval ST[5:]
+# ST[5:9] means elements 5 through 9.
+# defarray(...) è un modo rapido per costruire array.
+
+# Qui costruisce un array di matrix direttamente da y e m.
+# 3rd lesson, Thursday November 20, 2025
+
+# print series elements
+# Stessa idea per strings: array che contiene g e k.
+# The format string shows tabs between columns.
+printf "1 \t 2\t %g\n",year[7]
+printf "1 \t 2\t %g\n",year[8]
+# print artist --range=512:519 prints only observations 512 to 519 for the series 'artist'.
+# varname(year) ritorna una string con il nome della variabile, qui "year".
+
+
+# Alternative array definitions
+# varnames(X) ritorna un array di string (names) corrispondenti a tutte le variabili nella list X.
+# Here it builds an array of matrices directly from y and m.
+matrices MMM=defarray(y,m)
+MMM
+# eval X stampa le variabili nella list X (spesso un summary/preview a seconda del contesto).
+# Same idea for strings: array containing g and k.
+strings SSS=defarray(g,k)
+SSS
+
+# series names
+# varname(year) returns a string with the variable name, here "year".
+string v=varname(year)
+eval v
+#eval year  #(this prints all values)
+#year
+
+# varnames(X) returns an array of strings (names) corresponding to all variables in the list X.
+strings vvv=varnames(X)
+eval vvv   
+# eval X prints the variables in list X (often summary/preview depending on context).
+eval X
+#X          #(this prints all values)
+# print X
+# --- END verbatim: Example1.inp --------------------------------------------------
+
+# Spiegazioni extra (sicure, cose base):
+# - matrix y={year}: le braces { } convertono una series in una matrix con una colonna.
+# - matrices MAT=null: crea un array vuoto di matrix; MAT += y fa append.
+# - strings ST=null: crea un array vuoto di string; ST[5:9] fa slicing dell'array.
+# - year[7]: accesso a un elemento per observation index.
+# - print artist --range=512:519: stampa un sottoinsieme di observations.
+# - varname(year): ritorna il nome della variabile come string.
+# - varnames(X): ritorna un array di nomi contenuti nella list X.
+
+
+# ==============================================================================
+# FILE 2: Example2.inp.txt (verbatim) + spiegazioni
+# ==============================================================================
+# Questa lezione introduce loop (for/foreach/while) e logica if/elif/else.
+
+# --- BEGIN verbatim: Example2.inp.txt ------------------------------------------
+set verbose off
+
+# set verbose off riduce quanto Gretl stampa automaticamente.
+# È utile negli script per evitare log molto lunghi.
+
+# 3rd lesson, Thursday November 20, 2025
+
+open mp3.xls
+# Carica il dataset Excel mp3.xls in memoria.
+list X=folder artist song year
+# Definisce una list X con quattro variabili: folder, artist, song, year.
+
+
+# loops in gretl ("for", "foreach", "while")
+
+scalar ini=200
+scalar fin=225
+# Due scalar usati come estremi del loop.
+
+loop for i=ini..fin
+# loop for i=ini..fin esegue i = ini, ini+1, ..., fin.
+# Dentro questo loop, i è uno scalar che cambia a ogni iterazione.
+    printf "artist no. %g: %s\n",i,artist[i]
+# artist[i] accede alla observation i della series artist.
+# %g stampa i numerico, %s stampa la string dell'artist.
+endloop
+
+#------------------------------------------------------------------------------------------------
+# 4th lesson, Friday November 21, 2025
+
+
+loop for (i=0.01; i<=0.2; i+=.01)
+# Sintassi del for in stile C: (start; condition; increment)
+# Qui i prende valori 0.01, 0.02, ..., 0.20.
+    i
+# Scrivere solo "i" stampa il valore corrente.
+    #print i
+# Questo stamperebbe anche i, ma è commentato.
+endloop
+
+print " "
+
+scalar j=0
+# Inizializza lo scalar j.
+loop 20 --progressive
+# loop 20 ripete il blocco 20 volte.
+# --progressive mostra il progress durante l'esecuzione.
+    j++
+# j++ incrementa j di 1.
+    j
+# Stampa j.
+    print j #prints mean and std. deviation (useful for simulations)
+# NOTA: print su uno scalar spesso stampa info extra; il commento del prof spiega l'uso.
+endloop
+
+
+loop foreach i X
+# foreach itera su ogni nome di variabile contenuto nella list X.
+# In ogni iterazione, i è il *nome* di una variabile (come token).
+    i
+# Stampa il token corrente (nome variabile).
+    print varname($i)
+# $i dereferences the token to the actual series.
+# varname($i) returns the name as a string; printing it shows which variable we are on.
+    series y_$i=$i
+# Create a new series with a dynamic name:
+# - y_$i becomes y_folder, y_artist, y_song, y_year
+# - $i on the right-hand side means “the series itself”.
+endloop
+
+
+scalar ref=0
+scalar S=0
+# ref will count how many observations have been accumulated.
+# S will keep a running sum.
+
+loop while S<10000
+# while loop: repeats until the condition becomes false.
+    ref++
+# increment the observation counter
+    S += year[ref]
+# add the year at observation ref to the running total S
+    printf "iteration=%g --- S=%g\n",ref,S
+# print current iteration number and current sum
+endloop 
+
+
+
+# if statements/logical functions
+
+# (a) strings
+string g="Giulio"
+scalar x=7
+
+# 1. single 'if'
+if g=="Roberto"
+# String comparison uses ==
+    x=1
+# Assignment: set scalar x
+endif
+
+printf "x=%g\n",x
+
+
+# 2. single 'if' with alternative
+if g=="Mara"
+    x=1
+else
+# else runs when the condition is false
+    x=0
+endif
+    
+printf "\nx=%g\n",x
+
+
+# 3. multiple 'if' 
+if g=="Mara"
+    x=1
+elif g=="Giulio"
+# elif = "else if" (second condition)
+    x=2
+else
+    x=0
+endif
+
+printf "\nx=%g\n",x
+
+
+
+# (b) scalars
+x=7
+
+print " "
+
+# 1. single 'if'
+if x>2
+# Numeric comparison: >
+    print "it's ok!"
+endif
+
+
+
+# 2. single 'if' with alternative
+if x>2
+    print "it's ok!"
+else
+    print "oh no!"
+endif
+
+
+
+# 3. multiple 'if' 
+if x<=6
+# <= means “less than or equal”
+    print "it's ok!"
+elif x==7
+# == equality test
+    print "this is perfection!"
+elif x>7
+    print "oh no!"
+endif
+
+
+
+# 4. multiple 'if' with alternative
+if x<=6
+    print "it's ok!"
+elif x==7
+    print "this is perfection!"
+else
+    print "oh no!"
+endif
+
+print " "
+
+
+
+
+# (a) series (and scalars)
+
+series great=0
+series cut=0
+series equal=0
+# Create three series initialized to 0 for all observations.
+
+scalar N=$nobs
+# $nobs is number of observations in the dataset.
+# Store it in N to use as loop upper bound.
+
+loop for i=1..N
+# Loop over all observations 1..N.
+    if year[i]>2000
+# year[i] accesses the i-th observation of series year.
+        great[i]=1
+# Assign value at a single observation i of the series great.
+    else
+        great[i]=0
+    endif
+endloop
+
+
+loop for i=1..N
+    if year[i]>2000
+        cut[i]=year[i]
+# Here we copy year into cut only when year>2000, else we keep 0.
+    else
+        cut[i]=0
+    endif
+endloop
+
+loop for i=1..N
+    if year[i]==2000
+        equal[i]=2000
+# equal will be 2000 at observations where year equals exactly 2000.
+    else
+        equal[i]=0
+    endif
+endloop
+# --- END verbatim: Example2.inp.txt --------------------------------------------
+
+# Spiegazioni extra:
+# - loop for i=ini..fin: loop su interi.
+# - loop for (i=...; condition; increment): for in stile C.
+# - loop 20 --progressive: ripete 20 volte; --progressive mostra il progress.
+# - j++ incrementa lo scalar j.
+# - loop foreach i X: itera sulle variabili nella list X.
+#   Dentro foreach, $i si riferisce alla *series* indicata dal loop variable.
+# - series y_$i=$i: crea nuove series con nome dinamico (es. y_year).
+# - $nobs è un built-in scalar: numero di observations nel dataset.
+# - great[i]=... mostra un'assegnazione element-by-element in una series.
+
+
+# ==============================================================================
+# FILE 3: Example3.inp.txt (verbatim) + spiegazioni
+# ==============================================================================
+# Questa lezione copre le matrix: creazione, indexing, concatenation, operations.
+
+# --- BEGIN verbatim: Example3.inp.txt ------------------------------------------
+set verbose off
+
+open mp3.xls
+# Apre lo stesso dataset di prima.
+list X=folder artist song year
+# Definisce la list X di variabili.
+matrix y={year}
+# Converte la series year in una matrix (N x 1).
+
+
+#------------------------------------------------------------------------------------------------
+# 5th lesson, Tuesday November 25, 2025
+
+# Using matrices
+# 1. Creating a matrix by hand
+
+matrix A={1,2;3,4}
+# Sintassi matrix literal:
+# - Le virgole separano le colonne
+# - I punti e virgola separano le righe
+# Quindi questa è una matrix 2x2.
+A
+# Stampare il nome di una matrix stampa la matrix.
+
+# 2. Creating a matrix from a series
+
+matrix y={year}
+# Sovrascrive (ridefinisce) la matrix y dalla series year.
+#y
+
+# 3. Creating a matrix using functions: zeros, ones, seq, I
+
+matrix O=zeros(2,2)
+# zeros(r,c) crea una matrix r-per-c piena di 0.
+O
+matrix B=ones(8,8)
+# ones(r,c) crea una matrix r-per-c piena di 1.
+B
+matrix s=seq(1,8)'
+# seq(1,8) crea un column vector 1..8 (come matrix).
+# ' è transpose. Quindi seq(1,8)' diventa un row vector.
+s
+
+matrix BB=5*B
+# Moltiplicazione scalar-matrix: moltiplica ogni elemento per 5.
+BB
+
+matrix II=I(2)
+# I(n) crea la identity matrix n x n.
+II
+
+
+# 4. Creating a matrix from matrices (Counters: rows, cols, nelem; Functions: ~ and |)
+
+matrix SB=B[2:,1:3]
+# Sintassi di slicing/indexing per matrix: M[row_range, col_range]
+# 2: significa dalla riga 2 fino all'ultima.
+# 1:3 significa colonne da 1 a 3.
+SB
+
+matrix D={1,2,0,4;0,1,2,4;4,0,2,1}
+# Una matrix 3x4 scritta a mano.
+matrix cc={2,4}
+# cc è una matrix 1x2 che contiene indici di colonna (2 e 4).
+
+matrix D1=D[1:2,cc]
+# Qui la selezione delle colonne usa una matrix di indici (cc).
+# Righe 1:2 (prime due righe), colonne specificate da cc.
+D
+D1
+
+# horizontal 'attachment'
+matrix E=s~B
+# ~ fa concatenation orizzontale (side-by-side).
+# E ha le colonne di s seguite dalle colonne di B.
+E
+
+# vertical 'attachment'
+matrix F=B|BB
+# | fa concatenation verticale (stack delle righe).
+# F ha B sopra BB.
+F
+
+eval rows(B)
+# rows(M) returns number of rows of matrix M.
+eval cols(B)
+# cols(M) returns number of columns.
+eval nelem(B)
+# nelem(M) returns total number of elements = rows*cols.
+
+# 5. Creating a matrix using loops: definition and building
+
+scalar r=rows(A)
+scalar c=cols(A)
+# Store row/column counts in scalars.
+matrix G=zeros(r,c)
+# Create an empty matrix G with same size as A.
+scalar k=0
+# Counter we'll increment to fill G.
+
+loop for i=1..r
+# Nested loops to fill matrix entries.
+    loop for j=1..c
+        k++
+# Increment k.
+        G[i,j]=k
+# Assign element (i,j) of matrix G.
+    endloop
+endloop
+G
+        
+
+#------------------------------------------------------------------------------------------------
+# 6th lesson, Thursday November 27, 2025
+
+# 6. Basic operations:
+
+# Define matrices (by hand)
+matrix M={1,2,3;4,5,6;7,8,9}
+# 3x3 matrix.
+matrix In=I(3)
+# identity 3x3.
+matrix Q=M~I(3)
+# horizontal concatenation: (3x3) ~ (3x3) = (3x6).
+
+print "matrices:"
+eval M 
+eval In
+eval Q
+eval M~In
+
+print "sums:"
+eval M+In
+# Matrix addition: same dimensions required.
+eval M-In
+# Matrix subtraction.
+
+print "products"
+matrix AA={0,1,1;1,2,2}
+matrix BB={3,0;1,1}
+
+#STANDARD PRODUCT (ROWS times COLUMNS)
+
+#eval AA*BB  #matrices do not conform! 
+             #(number of columns of the pre-multiplying matrix differs 
+             #from the number of rows of the post-multiplyng matrix) 
+             
+eval BB*AA
+# Standard matrix multiplication: dimensions must conform.
+
+#HADAMARD PRODUCT (ELEMENT by ELEMENT PRODUCT)
+eval M.*In
+# Hadamard (element-by-element) multiplication uses .*
+# Without dot (M*In) it would be matrix multiplication.
+
+# 7. Operators: ',.^, sqrt, abs, log, exp
+
+print "squares:"
+eval M.^2
+# Element-by-element power uses .^
+eval M^2
+# Without dot, ^ is matrix power (for square matrices).
+eval M*M
+# Matrix multiplication.
+
+print "square roots"
+eval sqrt(M)
+# sqrt applied to a matrix acts element-by-element.
+eval M.^(1/2)
+# Another way to compute elementwise sqrt.
+
+print "absolute value:"
+matrix P={1,-1,0;-2,-3,1}
+# Matrix with negative values.
+eval P
+#eval abs(P)
+
+eval exp(P)
+# exp() applies element-by-element.
+eval log(P)
+# log() applies element-by-element.
+
+print "Basic statistics"
+
+eval M
+eval sumc(M)
+# sumc = sum by columns (returns a row vector of column sums).
+eval sumr(M)
+# sumr = sum by rows (returns a column vector of row sums).
+eval sumr(sumc(M))
+# Total sum done in two steps.
+eval meanc(M)
+# mean by columns.
+eval meanr(M)
+# mean by rows.
+eval minc(M)
+# minimum by columns.
+eval maxc(M)
+# maximum by columns.
+eval minr(M)
+# minimum by rows.
+eval maxr(M)
+# maximum by rows.
+eval sdc(M)
+# standard deviation by columns.
+eval sdc(M).^2  #variance
+# variance by columns (std^2).
+eval quantile(M,0.5)  #median
+# quantile at 0.5 is the median (computed elementwise over all entries).
+
+eval diag(M) #only for square matrices!
+# diag(M) extracts the diagonal.
+
+
+# 9. Functions: msortby (only for matrices), mshape, vec, inv
+eval M~In
+eval msortby(M~In,5)
+# msortby sorts rows of a matrix by a selected column (here column 5).
+
+eval mshape(M~In,1,18)
+# mshape reshapes a matrix (here into 1x18).
+eval mshape(M~In,2,9)
+# reshape into 2x9.
+eval mshape(M~In,6,3)
+# reshape into 6x3.
+
+eval mshape(M~In,18,1)~vec(M~In)
+# vec(M) vectorizes the matrix (stacks columns) into a single column vector.
+# This line compares mshape(...,18,1) and vec(...) side-by-side.
+
+#------------------------------------------------------------------------------------------------
+# 7th lesson, Friday November 28, 2025
+
+#Logical 
+
+scalar N=$nobs
+
+matrix mgreat=(y.>2000.?1.:0)
+# Logical comparisons on matrices often use dotted operators:
+# y.>2000 creates a matrix of TRUE/FALSE by element.
+# The ternary operator ? : is used elementwise here:
+#   condition ? value_if_true : value_if_false
+# In this case, convert TRUE/FALSE into 1/0.
+matrix mcut=(y.>2000.?y:0)
+# If year>2000 keep y, else 0.
+matrix mequal=(y.=2000.?y:0)
+# y.=2000 tests equality elementwise.
+
+
+matrix out=mgreat~mcut~mequal
+# Horizontal concatenation: out has 3 blocks of columns.
+out
+
+
+strings C=defarray("dummy","greater","equal")
+# Column names (array of strings).
+strings R=artist
+# Row names: take values from series artist (string series).
+
+scalar opt=1
+# Option switch: 1 means do the first branch below.
+
+
+
+if opt  # Using a numerical id as a new column
+    matrix tmp=seq(1,N)'
+# seq(1,N)' creates a 1xN row vector; often you'd want N x 1, but this is professor's example.
+    out=tmp~out
+# Add the id column to the left of out.
+    C=defarray("id","dummy","greater","equal")
+# Update column-name array.
+else # putting the id in rsname
+    loop for i=1..N
+        R[i]=sprintf("%g",i)
+# sprintf formats a value into a string (without printing).
+# Here it creates row labels "1", "2", ...
+    endloop
+endif
+
+
+rnameset(out,R)
+# Attach row names to matrix out.
+cnameset(out,C)
+# Attach column names to matrix out.
+print out
+# Print matrix with names.
+# --- END verbatim: Example3.inp.txt --------------------------------------------
+
+# Extra explanations:
+# - Matrix indexing: B[2:,1:3] means rows 2..end, columns 1..3.
+# - ~ concatenates matrices horizontally (side-by-side); | concatenates vertically.
+# - M.*In is elementwise multiplication; M*In is matrix multiplication.
+# - The dotted comparison operators y.>2000 produce elementwise true/false.
+# - Ternary operator inside matrices: (condition ? a : b).
+# - rnameset/cnameset attach row/column names to a matrix for printing.
+
+
+# ==============================================================================
+# FILE 4: Deterend.inp (verbatim) + spiegazioni
+# ==============================================================================
+# Questo script è più orientato alle time-series: detrending e forecast evaluation.
+# Mostra user-defined function in Gretl (function ... end function).
+
+# ------------------------------------------------------------------------------
+# Suggerimento di lettura (per beginners):
+# - Prova a leggere ogni function così: "inputs" -> "nuovi oggetti creati" -> "output".
+# - In Gretl, i type name nella dichiarazione contano:
+#     function matrix ...   returns una matrix
+#     function scalar ...   returns uno scalar
+#     (argomenti come series y significano che y è una series completa, non un valore singolo)
+# - L'indentation serve solo agli umani; Gretl ignora gli spazi.
+# ------------------------------------------------------------------------------
+
+# --- BEGIN verbatim: Deterend.inp ----------------------------------------------
+set verbose off
+# Riduce il rumore in output.
+open EconomicsUSA.gdt
+# Apre il dataset Gretl (.gdt) con dati macro USA.
+
+# part 1: Functions
+
+function matrix EstimateParams(series y)
+# Purpose di questa function
+# -------------------------
+# EstimateParams(y) calcola i coefficienti di un *linear trend* per una series y.
+# L'idea è: approssimare y_t con una straight line
+#
+#     y_t ≈ alpha + beta * t
+#
+# dove t è un time index (1,2,3,...). La function ritorna una matrix 2x1:
+#     { alpha ; beta }
+# così puoi ricostruire il fitted trend come alpha + beta*t.
+#
+# Syntax spiegata (header)
+# ------------------------
+# - "function matrix" significa: la function returns un oggetto matrix.
+# - "EstimateParams" è il nome della function.
+# - "(series y)" significa: l'argomento di input y deve essere una series (una colonna di dati
+#   allineata alle observations). Dentro la function, y si comporta come un vector.
+
+    # $nobs è un built-in scalar: numero di observations nel dataset corrente.
+    # Lo assegniamo a T (uno scalar) per usarlo nelle formule.
+    scalar T=$nobs
+   
+    # $time è la built-in time index series di Gretl (richiede una time-series structure).
+    # Tipicamente è 1,2,...,T (oppure una variabile tempo sotto il cofano).
+    # Qui la copiamo in una series locale chiamata t.
+    series t=$time
+    
+    # mT è la mean del time index quando t = 1..T.
+    # Per 1..T, mean(t) = (T+1)/2.
+    scalar mT=(T+1)/2
+
+    # vT è proporzionale alla variance del time index per 1..T.
+    # Infatti, Var(t) per t=1..T è (T^2-1)/12; qui vediamo T*(T+1)/12,
+    # che appare perché il prof usa una formula chiusa comoda.
+    # (Non serve memorizzarla: basta sapere che è uno scaling per la slope.)
+    scalar vT=T*(T+1)/12
+
+    # cT è un termine tipo covariance tra time e y, costruito da sum e mean.
+    # - "time*y" è una moltiplicazione element-by-element di due series
+    #   (time index per y a ogni observation).
+    # - sum(time*y) somma quel prodotto su tutte le observations.
+    # - mean(y) è la sample mean di y.
+    # Questa riga implementa il numeratore necessario per il coefficiente di slope in OLS.
+    scalar cT=(sum(time*y)-T*(mean(y)*(T+1)/2))/(T-1)
+    
+    # ybar è semplicemente la mean della series y.
+    scalar ybar=mean(y)
+        
+    # beta è la slope stimata (crescita del trend per time step).
+    # È costruita come (termine tipo covariance)/(termine tipo variance).
+    scalar beta=cT/vT
+
+    # alpha è l'intercept, così che la linea passi per il punto medio:
+    # alpha = mean(y) - beta * mean(t)
+    scalar alpha=ybar-beta*mT
+    
+    # "return" fa return dell'oggetto dalla function.
+    # {alpha;beta} è sintassi matrix literal:
+    # - Curly braces { } costruiscono una matrix.
+    # - Il semicolon ";" separa le righe.
+    # Quindi è un column vector 2x1:
+    #   row 1 = alpha
+    #   row 2 = beta
+    return {alpha;beta}
+end function
+
+# See gretl help, pagg 347-348 (section 35.4)
+
+function scalar ME(series actual, series forecast)
+
+# ME = Mean Error
+# ---------------
+# Goal: calcolare l'average forecast error.
+# Inputs:
+# - actual: la series osservata (vera)
+# - forecast: la series prevista (stessa lunghezza)
+# Output:
+# - scalar: la mean di (actual - forecast)
+
+    series e=actual-forecast
+    # Crea una series temporanea e (error) observation-by-observation.
+    scalar ME=mean(e)
+    # mean(e) calcola la media su tutte le observations.
+    
+    return ME
+    # Ritorna il valore scalar.
+end function
+
+function scalar RMSE(series actual, series forecast)
+
+# RMSE = Root Mean Squared Error
+# ------------------------------
+# sqrt(mean(e^2))
+
+    series e=actual-forecast
+    # Series degli errori.
+    scalar RMSE=sqrt(mean(e^2))
+    # e^2 fa il quadrato element-by-element per la series.
+    # mean(e^2) fa la media degli squared errors.
+    # sqrt(...) fa la square root.
+    
+    return RMSE
+end function
+
+function scalar MAE(series actual, series forecast)
+
+# MAE = Mean Absolute Error
+# -------------------------
+# mean(abs(e))
+
+    series e=actual-forecast
+    scalar MAE=mean(abs(e))
+    # abs(e) è il valore assoluto observation-by-observation.
+    
+    return MAE
+end function
+
+function scalar MPE(series actual, series forecast)
+
+# MPE = Mean Percentage Error
+# ---------------------------
+# mean(100 * (actual-forecast)/actual)
+# Nota: se actual contiene zeri, i percentage error possono esplodere.
+
+    series e=(actual-forecast)/actual
+    # division elementwise crea una percentage error series.
+    scalar MPE=mean(100*e)
+    # moltiplica per 100 per esprimere in percent.
+    
+    return MPE
+end function
+
+function scalar MAPE(series actual, series forecast)
+
+# MAPE = Mean Absolute Percentage Error
+# ------------------------------------
+# mean(100 * abs((actual-forecast)/actual))
+
+    series e=abs((actual-forecast)/actual)
+    # absolute percentage error per observation.
+    scalar MAPE=mean(100*e)
+    
+    return MAPE
+end function
+
+function scalar TheilU(series actual, series forecast)
+    
+    #U2 for time series
+      
+    # forecast(+1) è la forecast series shiftata di un passo *in avanti* (lead).
+    # actual(+1) è analogo.
+    # La formula confronta la varianza dell'errore one-step-ahead con un baseline naive.
+    # Sintassi IMPORTANTE: X(+1) significa lead; X(-1) significherebbe lag.
+    scalar U=mean(((forecast(+1)-actual(+1))/actual)^2)/mean(((actual(+1)-actual)/actual)^2)   #0<U1<1 (Normalized index)
+    
+    return U
+end function
+
+
+function matrix MSE(series actual, series forecast)
+    
+    #U2 for time series
+    scalar T=$nobs
+    # numero di observations.
+    scalar scale=(T-1)/T
+    # scaling factor usato a volte per allineare convenzioni di population vs sample variance.
+    
+    scalar y=mean(actual)
+    # mean di actual.
+    scalar f=mean(forecast)
+    # mean di forecast.
+    scalar sy=sqrt(scale*var(actual))
+    # var(actual) è la variance della series; sqrt -> standard deviation.
+    scalar sf=sqrt(scale*var(forecast))
+    # stesso per forecast.
+    scalar r=corr(actual,forecast)
+    # corr(...) è la correlation tra due series.
+    
+    matrix num={(y-f)^2;(sf-r*sy)^2;(1-r^2)*sy^2}
+    # Costruisce una matrix 3x1 con tre componenti della decomposizione MSE.
+    # Curly braces { } creano una matrix; i semicolon separano le righe.
+    scalar MSE=sumc(num)
+    # sumc(num) somma per colonne; per una matrix 3x1 dà la somma totale.
+    matrix out=num/MSE
+    # Divide ogni componente per il totale MSE -> proportions.
+       
+    return MSE|out
+    # "|" fa stacking verticale.
+    # Ritorna una matrix a 2 blocchi: prima riga = MSE, poi le righe con le proportions.
+end function
+
+#----------------------------------------------------------------------------------------------
+
+# PRESENTATION:
+
+# 1. Preliminary object definitions
+
+list X=indpro cpiaucsl
+# list di due series da processare.
+scalar n=nelem(X)
+# nelem(list) dà il numero di elementi nella list (qui 2).
+list FORECAST=null
+# inizializza una list vuota che conterrà series di forecast/trend.
+
+# 2. Data & plots
+summary X 
+# summary stampa descriptive statistics delle series nella list X.
+gnuplot X --time-series --with-lines --output=display
+# plot di tutte le series in X come time series.
+
+
+# 2. Aim of the work: detrend series and provide some forecast evaluations
+
+# 3. Code
+
+# filter 1: OLS detrendization (see 'Detrend.pdf' file)
+
+loop for i=1..n
+# loop sulle series in X.
+    matrix par=EstimateParams(X[i])
+    # X[i] seleziona la i-esima series dalla list X.
+    # EstimateParams ritorna una matrix 2x1 con alpha e beta.
+
+    printf "Estimated (linear) trend function for time series %s:\n",varname(X[i])
+    # varname(X[i]) prende il nome della series come string.
+    printf "\t TT=%g+%gt\n",par[1],par[2]
+    # par[1] e par[2] accedono agli elementi della matrix (indexing 1-based):
+    # par[1] = alpha, par[2] = beta.
+    series TREND_$i=par[1]+par[2]*t
+    # Crea una nuova series con nome dinamico: TREND_1, TREND_2, ...
+    # Ricostruisce la fitted trend line alpha + beta*t.
+    
+    #series f_$i=X[i]-TREND_$i
+    gnuplot X[i] TREND_$i --time-series --with-lines --output=display
+    # Plot della series originale e del fitted trend insieme.
+    FORECAST+=TREND_$i
+    # Fa append della nuova TREND series nella list FORECAST.
+    #check	
+    ols X[i] 0 time
+    # Esegue una regression senza intercept (0) su time.
+    # In Gretl, mettere 0 nella lista dei regressori significa "no constant".
+    # È un check rapido del trend.
+endloop
+
+
+# filter 2: Moving average
+
+scalar order=4
+# Lunghezza della finestra per moving average.
+
+loop for i=1..n
+    series MA_$i=movavg(X[i],order)
+    # movavg(series, order) calcola la moving average (smoother).
+    # MA_$i crea MA_1, MA_2, ...
+    gnuplot X[i] MA_$i --time-series --with-lines --output=display
+    # Plot della series con la moving average.
+    FORECAST+=MA_$i
+    # Fa append anche della MA series nella list FORECAST.
+endloop
+
+
+matrix output={}     #empty matrix (initialization)
+# output diventerà una tabella: rows = statistics, columns = models.
+strings model=null   #empty array of strings (initialization)
+# model conterrà i nomi delle colonne (string name di ogni forecast).
+scalar F=nelem(FORECAST)  #the list F contains all the forecast series
+# Numero di forecast series create.
+X+=X                 # re-define list X=indpro cpiaucsl indpro cpiaucsl
+# Duplica X così la sua lunghezza matcha FORECAST.
+# Dopo detrend e moving average, FORECAST ha 2*n elementi.
+# Quindi X+=X fa sì che X contenga le stesse series due volte.
+
+
+loop for j=1..F
+# Loop su tutte le forecast series.
+    series y=X[j]
+    # seleziona la actual series corrispondente.
+    series yhat=FORECAST[j]
+    # seleziona la forecast series.
+    output~=(ME(y,yhat)|RMSE(y,yhat)|MAE(y,yhat)|MPE(y,yhat)|MAPE(y,yhat)|TheilU(y,yhat)|MSE(y,yhat)[1]|MSE(y,yhat)[2]|MSE(y,yhat)[3]|MSE(y,yhat)[4])
+    # Costruisce una colonna di statistiche:
+    # - ME, RMSE, ... return scalar.
+    # - MSE(...) ritorna una matrix; [1], [2]... selezionano elementi dalla matrix ritornata.
+    # L'espressione tra parentesi è un column vector.
+    # L'operatore "~=" fa append di questa nuova colonna alla matrix output.
+    model+=varname(FORECAST[j])
+    # Fa append del nome della forecast series come label di colonna.
+endloop
+
+
+strings stats=defarray("Mean Error (ME)","Root Mean Square Error (RMSE)","Mean Absolute Error (MAE)","Mean Percentage Error (MPE)",
+  "Mean Absolute Percentage Error (MAPE)","Theil's U (U2)","Mean Squared Error (MSE)"," Bias proportion (UM)"," Regression proportion (UR)"," Disturbance proportion (UD)")
+
+
+print "Univariate forecast evaluation statistics"
+# Titolo stampato in output.
+rnameset(output,stats)
+# Imposta i row name della matrix output.
+cnameset(output,model)
+# Imposta i column name della matrix output.
+print output
+# Stampa la tabella finale.
+
+
+# 4. FINAL COMMENTS
+# --- END verbatim: Deterend.inp ------------------------------------------------
+
+# Extra explanations (sticking to the basics):
+# - function <type> name(args): defines a reusable function.
+#   Here: EstimateParams returns a 2x1 matrix {alpha; beta}.
+# - $time is the internal time index (requires time series structure).
+# - forecast(+1) is lead by 1 period; actual(+1) likewise.
+# - list FORECAST=null initializes an empty list; FORECAST += TREND_$i appends.
+# - Dynamic series names: TREND_$i creates TREND_1, TREND_2, ...
+# - output~= (...) horizontally concatenates new columns to a matrix.
+# - rnameset/cnameset: set row/column names for nicer printing.
+# ==============================================================================

@@ -1,0 +1,146 @@
+# ==============================================================================
+# GRETL EXAM PROJECT (TIME SERIES) - EU FURNITURE PROCUREMENT (CPV 391)
+# (COMMENTED / STUDY VERSION)
+# ==============================================================================
+# Goal: explain the *syntax* and the meaning of each block for someone new to Gretl.
+# Note: lines starting with "#" are comments. Gretl ignores them.
+#
+# This file is a commented copy of `exam_project_gretl_simple.inp`.
+# The original script is left untouched.
+# ==============================================================================
+
+# "set verbose off" reduces the amount of log output Gretl prints while running the script.
+# Useful when you want clean output.
+set verbose off
+
+# -----------------------------------------------------------------------------
+# 1) Load data and define the time-series structure
+# -----------------------------------------------------------------------------
+
+# "open" loads a dataset. Here we open a CSV generated previously by Python.
+# Gretl will import the columns as series (numeric) or strings as needed.
+open furniture_quarterly_ts.csv
+
+# "setobs" tells Gretl that we want to treat the dataset as a time series.
+# Syntax: setobs <frequency> <start-period> --time-series
+# - frequency 4 = quarterly data
+# - start period 2008:2 means 2008Q2
+# Gretl needs this so that commands like gnuplot --time-series, lags, leads, etc. work.
+setobs 4 2008:2 --time-series
+
+# "print" prints text (a string literal) to the output window.
+print "EU furniture procurement (CPV 391) - quarterly time series"
+
+# Printing an empty line for readability.
+print ""
+
+# "summary" prints basic descriptive statistics for the listed series.
+# Here we keep output minimal: levels only, no huge tables.
+# Series meaning (from your extraction):
+# - n_tenders: number of distinct tenders in the quarter
+# - n_lots: number of (tender_id, lot_id) lots in the quarter
+# - total_value: sum of winning lot value (in EUR) in the quarter
+# - avg_lot_price: average winning lot value (average across lots)
+# - avg_bids: average number of bids per lot in the quarter
+# - share_one_bid: share of lots with exactly 1 bid in the quarter
+summary n_tenders n_lots total_value avg_lot_price avg_bids share_one_bid
+
+# Plot 1: activity + market size
+# "gnuplot" creates plots. With "--time-series", the x-axis uses the time index.
+# "--with-lines" draws lines between observations.
+# "--output=display" shows the plot on screen (instead of writing to a file).
+# The braces { ... } pass options directly to gnuplot.
+# "set y2tics" tells gnuplot to add a secondary y-axis (right side), useful when
+# two series have very different scales.
+gnuplot n_tenders total_value --time-series --with-lines --output=display { \
+    set title "Activity and market size"; \
+    set y2tics; \
+}
+
+# -----------------------------------------------------------------------------
+# 2) Competition: are one-bid lots common?
+# -----------------------------------------------------------------------------
+
+# Plot 2: competition indicators
+# Here we plot avg_bids and share_one_bid together.
+# (avg_bids is a level, share_one_bid is in [0,1].)
+gnuplot avg_bids share_one_bid --time-series --with-lines --output=display { \
+    set title "Competition indicators: avg bids vs share of one-bid lots"; \
+}
+
+# Scalars are single numbers (not time series).
+# "scalar x = mean(series)" computes the sample mean.
+# Gretl also has min() and max() for series.
+scalar mean_onebid = mean(share_one_bid)
+scalar max_onebid = max(share_one_bid)
+scalar min_onebid = min(share_one_bid)
+
+print ""
+print "Key competition facts (share of lots with exactly 1 bid)"
+
+# "printf" is like C's printf: you control formatting.
+# "%.3f" prints a floating number with 3 digits after the decimal point.
+# "\n" is newline.
+printf "mean share_one_bid: %.3f\n", mean_onebid
+printf "min  share_one_bid: %.3f\n", min_onebid
+printf "max  share_one_bid: %.3f\n", max_onebid
+
+# -----------------------------------------------------------------------------
+# 3) Price vs competition: simple, explainable relationship
+# -----------------------------------------------------------------------------
+
+# "series" defines a new time series.
+# "log()" is the natural logarithm. Using logs often helps:
+# - reduces skew
+# - coefficients can be interpreted as approximate percentage changes
+# IMPORTANT: avg_lot_price must be > 0 for log() to work.
+series l_price = log(avg_lot_price)
+
+# Plot 3: log price trend
+# Single series plot: nice for showing long-run trends.
+gnuplot l_price --time-series --with-lines --output=display { \
+    set title "Log average winning lot price"; \
+}
+
+# Build a linear trend.
+# "time" is a built-in time index series in Gretl once you have setobs.
+# Here we store it as a series called t.
+series t = time
+
+print ""
+print "Model: log(avg_lot_price) = f(share_one_bid, t)"
+
+# "ols" runs Ordinary Least Squares regression.
+# Syntax: ols <dependent> <regressors...>
+# "const" adds an intercept.
+# Here: l_price_t = b0 + b1*share_one_bid_t + b2*t + error_t
+# The trend is included to reduce spurious correlation from common trending behavior.
+ols l_price const share_one_bid t
+
+# Optional alternative model using average bids instead of one-bid share.
+print ""
+print "Model: log(avg_lot_price) = f(avg_bids, t)"
+ols l_price const avg_bids t
+
+# -----------------------------------------------------------------------------
+# 4) One simple structural break example (COVID)
+# -----------------------------------------------------------------------------
+
+# Dummies are often built using logical expressions.
+# Gretl supports a ternary operator: (condition) ? value_if_true : value_if_false
+# Here we create a dummy that is 1 from a certain observation onward.
+#
+# IMPORTANT: "t" is an index (1, 2, 3, ...). The value 47 is dataset-specific.
+# If your sample start/end changes, you should recompute this cutoff.
+series covid = (t >= 47) ? 1 : 0
+
+print ""
+print "Model with COVID dummy: log(avg_lot_price) = f(share_one_bid, t, covid)"
+
+# Add the dummy to allow a level shift after COVID starts.
+ols l_price const share_one_bid t covid
+
+print ""
+print "ANALYSIS COMPLETE"
+print "Discussion points: (1) activity/value trend, (2) rise in one-bid share in recent years,"
+print "(3) competition-price link controlling for trend, (4) COVID dummy sign/significance."
