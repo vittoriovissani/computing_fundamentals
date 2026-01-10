@@ -164,9 +164,15 @@ def aggregate_monthly(df):
     winners = winners[(winners["bid_price_EUR"].notna()) & (winners["bid_price_EUR"] > 0) & (winners["bid_price_EUR"] < 5_000_000_000)]
 
     # Monthly aggregates (meaningful time-series metrics)
+    # IMPORTANT: lot_lotId is not guaranteed to be globally unique across tenders.
+    # A lot is uniquely identified by (tender_id, lot_lotId). Therefore we build a
+    # composite lot key for correct counting.
+    winners = winners.copy()
+    winners["lot_key"] = winners["tender_id"].astype(str) + "::" + winners["lot_lotId"].astype(str)
+
     monthly = winners.groupby("year_month").agg(
         n_tenders=("tender_id", "nunique"),
-        n_lots=("lot_lotId", "nunique"),
+        n_lots=("lot_key", "nunique"),
         total_value=("bid_price_EUR", "sum"),
         avg_lot_price=("bid_price_EUR", "mean"),
         median_lot_price=("bid_price_EUR", "median"),
@@ -175,8 +181,11 @@ def aggregate_monthly(df):
     ).reset_index()
 
     # Add competition structure: lots with exactly one bid
+    lot_level = lot_level.copy()
+    lot_level["lot_key"] = lot_level["tender_id"].astype(str) + "::" + lot_level["lot_lotId"].astype(str)
+
     one_bid = lot_level.groupby("year_month").agg(
-        n_lots_all=("lot_lotId", "nunique"),
+        n_lots_all=("lot_key", "nunique"),
         n_lots_one_bid=("one_bid_lot", "sum"),
         share_one_bid=("one_bid_lot", "mean"),
     ).reset_index()
@@ -282,9 +291,14 @@ def main():
     winners_q = winners_q.drop_duplicates(subset=["tender_id", "lot_lotId"], keep="first")
     winners_q = winners_q[(winners_q["bid_price_EUR"].notna()) & (winners_q["bid_price_EUR"] > 0) & (winners_q["bid_price_EUR"] < 5_000_000_000)]
 
+    # IMPORTANT: lot_lotId is not guaranteed to be globally unique across tenders.
+    # Use composite key (tender_id, lot_lotId) for correct lot counts.
+    winners_q = winners_q.copy()
+    winners_q["lot_key"] = winners_q["tender_id"].astype(str) + "::" + winners_q["lot_lotId"].astype(str)
+
     quarterly = winners_q.groupby("year_quarter").agg(
         n_tenders=("tender_id", "nunique"),
-        n_lots=("lot_lotId", "nunique"),
+        n_lots=("lot_key", "nunique"),
         total_value=("bid_price_EUR", "sum"),
         avg_lot_price=("bid_price_EUR", "mean"),
         median_lot_price=("bid_price_EUR", "median"),
@@ -292,8 +306,11 @@ def main():
         avg_valid_bids=("lot_validBidsCount", "mean"),
     ).reset_index()
 
+    lot_level_q = lot_level_q.copy()
+    lot_level_q["lot_key"] = lot_level_q["tender_id"].astype(str) + "::" + lot_level_q["lot_lotId"].astype(str)
+
     one_bid_q = lot_level_q.groupby("year_quarter").agg(
-        n_lots_all=("lot_lotId", "nunique"),
+        n_lots_all=("lot_key", "nunique"),
         n_lots_one_bid=("one_bid_lot", "sum"),
         share_one_bid=("one_bid_lot", "mean"),
     ).reset_index()

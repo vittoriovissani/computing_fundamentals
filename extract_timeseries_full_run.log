@@ -1,0 +1,269 @@
+============================================================
+EXTRACTING TIME SERIES DATA FOR FURNITURE SECTOR (CPV 391)
+============================================================
+
+Found 16 data files
+Processing 2009...
+  Found 2857 furniture rows in chunk
+  Found 1835 furniture rows in chunk
+  Found 2310 furniture rows in chunk
+  Found 630 furniture rows in chunk
+  Total furniture rows for 2009: 7632
+Processing 2010...
+  Found 1460 furniture rows in chunk
+  Found 2697 furniture rows in chunk
+  Found 1438 furniture rows in chunk
+  Found 2803 furniture rows in chunk
+  Found 1198 furniture rows in chunk
+  Found 993 furniture rows in chunk
+  Total furniture rows for 2010: 10589
+Processing 2011...
+  Found 2989 furniture rows in chunk
+  Found 160 furniture rows in chunk
+  Found 2055 furniture rows in chunk
+  Found 2105 furniture rows in chunk
+  Found 1795 furniture rows in chunk
+  Found 3297 furniture rows in chunk
+  Found 3206 furniture rows in chunk
+  Found 66 furniture rows in chunk
+  Found 2157 furniture rows in chunk
+  Found 2389 furniture rows in chunk
+  Found 1068 furniture rows in chunk
+  Total furniture rows for 2011: 21287
+Processing 2012...
+  Found 3002 furniture rows in chunk
+  Found 1942 furniture rows in chunk
+  Found 4547 furniture rows in chunk
+  Found 1682 furniture rows in chunk
+  Found 3264 furniture rows in chunk
+  Found 5497 furniture rows in chunk
+  Found 114 furniture rows in chunk
+  Found 4616 furniture rows in chunk
+  Found 2806 furniture rows in chunk
+  Total furniture rows for 2012: 27470
+Processing 2013...
+  Found 2471 furniture rows in chunk
+  Found 2543 furniture rows in chunk
+  Found 3385 furniture rows in chunk
+  Found 296 furniture rows in chunk
+  Found 3978 furniture rows in chunk
+  Found 4002 furniture rows in chunk
+  Found 103 furniture rows in chunk
+  Found 1804 furniture rows in chunk
+  Found 2969 furniture rows in chunk
+  Total furniture rows for 2013: 21551
+Processing 2014...
+  Found 4531 furniture rows in chunk
+  Found 3040 furniture rows in chunk
+  Found 1180 furniture rows in chunk
+  Found 2791 furniture rows in chunk
+  Found 3424 furniture rows in chunk
+  Found 3499 furniture rows in chunk
+  Found 28 furniture rows in chunk
+  Found 3950 furniture rows in chunk
+  Found 2029 furniture rows in chunk
+  Total furniture rows for 2014: 24472
+Processing 2015...
+  Found 2292 furniture rows in chunk
+  Found 2621 furniture rows in chunk
+  Found 2206 furniture rows in chunk
+  Found 1132 furniture rows in chunk
+  Found 1786 furniture rows in chunk
+  Found 2271 furniture rows in chunk
+  Found 4198 furniture rows in chunk
+  Found 598 furniture rows in chunk
+  Found 1680 furniture rows in chunk
+  Found 3878 furniture rows in chunk
+  Found 700 furniture rows in chunk
+  Total furniture rows for 2015: 23362
+Processing 2016...
+  Found 646 furniture rows in chunk
+  Found 3040 furniture rows in chunk
+  Found 1709 furniture rows in chunk
+  Found 1176 furniture rows in chunk
+  Found 884 furniture rows in chunk
+  Found 7252 furniture rows in chunk
+  Found 2120 furniture rows in chunk
+  Found 2110 furniture rows in chunk
+  Found 163 furniture rows in chunk
+  Found 3489 furniture rows in chunk
+  Found 2802 furniture rows in chunk
+  Found 788 furniture rows in chunk
+  Total furniture rows for 2016: 26179
+Processing 2017...
+  Found 2524 furniture rows in chunk
+  Found 432 furniture rows in chunk
+  Found 43097 furniture rows in chunk
+  Found 2366 furniture rows in chunk
+  Found 470 furniture rows in chunk
+  Found 1919 furniture rows in chunk
+  Found 2103 furniture rows in chunk
+  Found 3416 furniture rows in chunk
+  Found 1413 furniture rows in chunk
+  Found 1453 furniture rows in chunk
+  Found 2553 furniture rows in chunk
+  Found 1942 furniture rows in chunk
+  Found 898 furniture rows in chunk
+  Total furniture rows for 2017: 64586
+Processing 2018...
+  Found 2213 furniture rows in chunk
+  Found 4005 furniture rows in chunk
+  Found 2300 furniture rows in chunk
+  Found 4249 furniture rows in chunk
+  Found 2998 furniture rows in chunk
+  Found 477 furniture rows in chunk
+  Found 611 furniture rows in chunk
+  Found 2637 furniture rows in chunk
+  Found 4808 furniture rows in chunk
+  Found 271 furniture rows in chunk
+  Found 2003 furniture rows in chunk
+  Found 1737 furniture rows in chunk
+  Found 1961 furniture rows in chunk
+  Found 1808 furniture rows in chunk
+  Found 1684 furniture rows in chunk
+  Found 528 furniture rows in chunk
+  Total furniture rows for 2018: 34290
+Processing 2019...
+  Found 2050 furniture rows in chunk
+  Found 3611 furniture rows in chunk
+  Found 3206 furniture rows in chunk
+  Found 2070 furniture rows in chunk
+  Found 2255 furniture rows in chunk
+  Found 2443 furniture rows in chunk
+  Found 2603 furniture rows in chunk
+  Found 2687 furniture rows in chunk
+  Found 8361 furniture rows in chunk
+  Found 3068 furniture rows in chunk
+  Found 175 furniture rows in chunk
+  Found 1240 furniture rows in chunk
+  Found 2261 furniture rows in chunk
+  Found 1657 furniture rows in chunk
+  Found 821 furniture rows in chunk
+  Total furniture rows for 2019: 38508
+Processing 2020...
+  Found 1982 furniture rows in chunk
+  Found 1742 furniture rows in chunk
+  Found 777 furniture rows in chunk
+  Found 2219 furniture rows in chunk
+  Found 2838 furniture rows in chunk
+  Found 2899 furniture rows in chunk
+  Found 971 furniture rows in chunk
+  Found 1664 furniture rows in chunk
+  Found 1003 furniture rows in chunk
+  Found 838 furniture rows in chunk
+  Found 3459 furniture rows in chunk
+  Found 1192 furniture rows in chunk
+  Found 4038 furniture rows in chunk
+  Found 2412 furniture rows in chunk
+  Found 1423 furniture rows in chunk
+  Found 1235 furniture rows in chunk
+  Found 985 furniture rows in chunk
+  Total furniture rows for 2020: 31677
+Processing 2021...
+  Found 2139 furniture rows in chunk
+  Found 66 furniture rows in chunk
+  Found 1338 furniture rows in chunk
+  Found 1840 furniture rows in chunk
+  Found 2539 furniture rows in chunk
+  Found 3075 furniture rows in chunk
+  Found 3193 furniture rows in chunk
+  Found 2098 furniture rows in chunk
+  Found 1439 furniture rows in chunk
+  Found 2240 furniture rows in chunk
+  Found 2434 furniture rows in chunk
+  Found 1477 furniture rows in chunk
+  Found 3375 furniture rows in chunk
+  Found 2673 furniture rows in chunk
+  Found 2414 furniture rows in chunk
+  Found 2320 furniture rows in chunk
+  Found 132 furniture rows in chunk
+  Total furniture rows for 2021: 34792
+Processing 2022...
+  Found 2704 furniture rows in chunk
+  Found 3890 furniture rows in chunk
+  Found 1854 furniture rows in chunk
+  Found 3918 furniture rows in chunk
+  Found 3535 furniture rows in chunk
+  Found 1783 furniture rows in chunk
+  Found 4318 furniture rows in chunk
+  Found 3996 furniture rows in chunk
+  Found 2095 furniture rows in chunk
+  Total furniture rows for 2022: 28093
+Processing 2023...
+  Found 4413 furniture rows in chunk
+  Found 3171 furniture rows in chunk
+  Found 3669 furniture rows in chunk
+  Found 5048 furniture rows in chunk
+  Found 4175 furniture rows in chunk
+  Total furniture rows for 2023: 20476
+Processing 2024...
+  Found 3610 furniture rows in chunk
+  Total furniture rows for 2024: 3610
+
+Combining all years...
+Total furniture records: 418574
+
+Sanity checks (before dedup):
+  Raw rows: 418574
+  Unique tenders: 62269
+  Unique lots: 109366
+  Rows beyond first occurrence of tender_id: 356305
+  Date coverage (non-missing counts):
+    tender_awardDecisionDate: 84928
+    tender_contractSignatureDate: 7689
+    tender_publications_lastContractAwardDate: 366938
+
+Creating monthly aggregates...
+
+Monthly time series created: 191 observations
+  year_month  n_tenders  n_lots  ...  n_lots_all  n_lots_one_bid  share_one_bid
+0    2008-04          1       1  ...           2             0.0       0.000000
+1    2008-05          1       1  ...           2             0.0       0.000000
+2    2008-08          1       1  ...           1             1.0       1.000000
+3    2008-09          2       2  ...           2             0.0       0.000000
+4    2008-10          5       5  ...           7             0.0       0.000000
+5    2008-11         11      11  ...          18             2.0       0.111111
+6    2008-12         19      19  ...          34             1.0       0.029412
+7    2009-01         67      67  ...         123            10.0       0.081301
+8    2009-02         49      49  ...          66             5.0       0.075758
+9    2009-03         50      50  ...          85             3.0       0.035294
+
+[10 rows x 11 columns]
+...
+    year_month  n_tenders  n_lots  ...  n_lots_all  n_lots_one_bid  share_one_bid
+181    2023-07        164     164  ...         182            88.0       0.483516
+182    2023-08        117     117  ...         135            56.0       0.414815
+183    2023-09        164     164  ...         188            78.0       0.414894
+184    2023-10        294     294  ...         328           148.0       0.451220
+185    2023-11        188     188  ...         213            96.0       0.450704
+186    2023-12        242     242  ...         266           135.0       0.507519
+187    2024-01         71      71  ...          95            46.0       0.484211
+188    2024-02        105     105  ...         129            74.0       0.573643
+189    2024-03         93      93  ...         126            49.0       0.388889
+190    2024-04         13      13  ...          32             5.0       0.156250
+
+[10 rows x 11 columns]
+
+Saved to: /Users/vittoriovissani/Documents/Computing fundamentals/workspace esame/repository/furniture_monthly_ts.csv
+
+Creating quarterly aggregates...
+Quarterly data saved to: /Users/vittoriovissani/Documents/Computing fundamentals/workspace esame/repository/furniture_quarterly_ts.csv
+Quarterly observations: 65
+
+============================================================
+SUMMARY STATISTICS
+============================================================
+Date range: 2008-04 to 2024-04
+Monthly observations: 191
+Quarterly observations: 65
+
+Variables available for Gretl analysis:
+  - n_tenders: Number of unique tenders awarded (proxy)
+  - n_lots: Number of lots awarded
+  - total_value: Total awarded value (sum of winning lot prices, EUR)
+  - avg_lot_price: Mean winning lot price (EUR)
+  - median_lot_price: Median winning lot price (EUR)
+  - avg_bids: Average total bids per lot (competition)
+  - avg_valid_bids: Average valid bids per lot
+  - share_one_bid: Share of lots with exactly 1 bid (concentration risk)
+  - n_lots_one_bid: Count of one-bid lots per period
