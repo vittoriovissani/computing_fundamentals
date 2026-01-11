@@ -56,7 +56,8 @@ cat("Total rows loaded:", nrow(raw_data), "\n")
 # ==============================================================================
 
 # Filter furniture sector (CPV 391*)
-furniture_data <- filter(raw_data, substr(tender_mainCpv, 1, 3) == "391")
+furniture_data <- filter(raw_data, startsWith(tender_mainCpv, "391"))
+
 cat("Rows after furniture filter:", nrow(furniture_data), "\n")
 
 # Keep latest publication per tender
@@ -64,6 +65,7 @@ furniture_data <- furniture_data %>%
   group_by(tender_id) %>%
   filter(publication_row_nr == max(publication_row_nr)) %>%
   ungroup()
+  
 cat("Rows after deduplication:", nrow(furniture_data), "\n")
 
 # Create unique bids dataset
@@ -81,6 +83,12 @@ valid_prices <- filter(unique_bids,
   bid_price_EUR > 0 & 
   bid_price_EUR < 5000000)
 cat("Valid price records:", nrow(valid_prices), "\n\n")
+
+cat("Unique tenders:", nrow(distinct(valid_prices, tender_id)), "\n")
+cat("Unique lots:", nrow(distinct(valid_prices, lot_lotId)), "\n")
+cat("Unique bids:", nrow(distinct(valid_prices, tender_id, lot_lotId, bid_row_nr)), "\n\n")
+
+
 
 # ==============================================================================
 # 3. PRICE DISTRIBUTION ANALYSIS
@@ -101,8 +109,7 @@ ggplot(valid_prices %>% filter(bid_price_EUR < 100000),
   )
 
 # Boxplot: Overall price distribution
-ggplot(valid_prices %>% filter(bid_price_EUR < 500000), 
-       aes(y = bid_price_EUR)) +
+ggplot(valid_prices %>% filter(bid_price_EUR < 500000), aes(y = bid_price_EUR)) +
   geom_boxplot(fill = "lightblue", color = "darkblue") +
   coord_flip() +
   labs(
@@ -111,7 +118,8 @@ ggplot(valid_prices %>% filter(bid_price_EUR < 500000),
     y = "Bid Price (EUR)"
   )
 
-# Boxplot: Prices by tender size
+# Boxplot: Prices distribution by tender size
+
 size_data <- filter(valid_prices, !is.na(tender_size))
 
 ggplot(size_data, aes(x = tender_size, y = bid_price_EUR, fill = tender_size)) +
@@ -121,11 +129,8 @@ ggplot(size_data, aes(x = tender_size, y = bid_price_EUR, fill = tender_size)) +
     title = "Price Distribution by Tender Size",
     subtitle = "Furniture Sector 2022",
     x = "Tender Size",
-    y = "Bid Price (EUR)"
-  ) +
+    y = "Bid Price (EUR)") +
   theme(legend.position = "none")
-
-ggsave("price_by_size.png", width = 10, height = 6)
 
 # ==============================================================================
 # 4. COMPETITION ANALYSIS (BIDS PER LOT)
@@ -133,7 +138,7 @@ ggsave("price_by_size.png", width = 10, height = 6)
 
 # Calculate bids per lot
 competition <- furniture_data %>%
-  distinct(lot_lotId, bid_row_nr, .keep_all = TRUE) %>%
+  distinct(tender_id, lot_lotId, bid_row_nr, .keep_all = TRUE) %>%
   filter(!is.na(lot_lotId)) %>%
   group_by(tender_id, lot_lotId) %>%
   summarise(n_bids = n_distinct(bid_row_nr), .groups = "drop")
@@ -142,32 +147,28 @@ summary(competition$n_bids)
 table(competition$n_bids)
 
 # Bar chart: Bids per lot distribution
-ggplot(competition %>% filter(n_bids <= 15), 
-       aes(x = factor(n_bids))) +
+ggplot(competition %>% filter(n_bids <= 15), aes(x = factor(n_bids))) +
   geom_bar(fill = "coral", color = "darkred") +
   scale_y_log10()+
   labs(
     title = "Number of Bids per Lot",
     subtitle = "Competition Level in Furniture Tenders",
     x = "Number of Bids",
-    y = "Lot Count"
-  )
+    y = "Lot Count")
 
 # Winning bids summary
 bids_summary <- furniture_data %>%
-  distinct(lot_lotId, bid_row_nr, .keep_all = TRUE)
+  distinct(tender_id, lot_lotId, bid_row_nr, .keep_all = TRUE)
+
 table(bids_summary$bid_isWinning)
 
 # ==============================================================================
 # 5. PROCEDURE TYPE ANALYSIS
 # ==============================================================================
 
-table(valid_prices$tender_procedureType)
-
 # Statistics by procedure type
-proc_data <- filter(valid_prices, !is.na(tender_procedureType))
-
-proc_stats <- proc_data %>%
+proc_stats <- filter(valid_prices, !is.na(tender_procedureType))%>%
+  distinct(tender_id, .keep_all = TRUE)%>%
   group_by(tender_procedureType) %>%
   summarise(
     n = n(),
@@ -236,31 +237,6 @@ furniture_data %>%
     y = "Number of Tenders"
   )
 
-# Scatter plot: Lots vs Total Value by country
-furniture_data %>%
-  distinct(lot_lotId, bid_row_nr, .keep_all = TRUE) %>%
-  filter(bid_isWinning == "yes") %>%
-  filter(!is.na(bid_price_EUR)) %>%
-  group_by(tender_country) %>%
-  summarise(
-    n_lots = n(),
-    total_value = sum(bid_price_EUR)
-  ) %>%
-  arrange(desc(n_lots)) %>%
-  head(10) %>%
-  ggplot(aes(x = n_lots, y = total_value, color = tender_country, size = total_value)) +
-  scale_x_log10() +
-  scale_y_log10() +
-  geom_point() +
-  labs(
-    title = "Market Size by Country",
-    subtitle = "Winning Bids - Lots vs Total Value",
-    x = "Number of Lots",
-    y = "Total Value (EUR)",
-    color = "Country",
-    size = "Value"
-  )
-
 # Boxplot: Prices by country
 ggplot(furniture_data %>% filter(bid_price_EUR < 100000), 
        aes(x = tender_country, y = bid_price_EUR, fill = tender_country)) +
@@ -272,6 +248,3 @@ ggplot(furniture_data %>% filter(bid_price_EUR < 100000),
     y = "Bid Price (EUR)"
   ) +
   theme(legend.position = "none")
-
-
-
