@@ -1,0 +1,110 @@
+# ==============================================================================
+# GRETL EXAM PROJECT - EU FURNITURE PROCUREMENT (CPV 391)
+# FINAL VERSION FOR EXAM
+# ==============================================================================
+#
+# RESEARCH QUESTION:
+# How has competition evolved in EU public procurement for furniture?
+# What is the relationship between competition and prices?
+#
+# Dataset: furniture_monthly_ts.csv
+# Period: 2008M04 - 2024M04 (191 monthly observations)
+# ==============================================================================
+
+set verbose off
+
+# -----------------------------------------------------------------------------
+# 1) DATA LOADING
+# -----------------------------------------------------------------------------
+
+open furniture_monthly_ts.csv
+setobs 12 2008:4 --time-series
+
+# Descriptive statistics (key variables only)
+summary n_lots avg_lot_price avg_bids share_one_bid
+
+# -----------------------------------------------------------------------------
+# Decline in competition over time
+# -----------------------------------------------------------------------------
+
+#time variable t
+series t = time
+
+# Main plot: competition over time
+gnuplot avg_bids share_one_bid --time-series --with-lines --output=display { \
+    set title "Evolution of competition in procurement (2008-2024)"; \
+    set ylabel "Average number of bids (avg_bids)"; \
+    set y2label "Share of single-bid lots (share_one_bid)"; \
+    set y2tics; \
+}
+
+# Regression: does share_one_bid have a trend?
+ols share_one_bid const t
+
+# Calculate change over the period
+scalar sob_start = share_one_bid[1]
+scalar sob_end = share_one_bid[$nobs]
+scalar change_pp = (sob_end - sob_start) * 100
+
+printf "\nChange in share_one_bid: from %.1f%% to %.1f%% (+%.1f percentage points)\n", \
+    sob_start*100, sob_end*100, change_pp
+
+# -----------------------------------------------------------------------------
+# Competition-price relationship
+# -----------------------------------------------------------------------------
+
+# Log transformation to interpret coefficients as semi-elasticities
+series l_price = log(avg_lot_price)
+
+# Plot: average price over time
+gnuplot avg_lot_price --time-series --with-lines --output=display { \
+    set title "Average lot price (EUR)"; \
+    set ylabel "EUR"; \
+}
+
+
+ols l_price const share_one_bid
+
+# Coefficient interpretation
+scalar beta_sob = $coeff[2]
+scalar pct_effect = (exp(beta_sob * 0.10) - 1) * 100
+
+printf "\nInterpretation: +10pp in share_one_bid -> %.1f%% change in price\n", pct_effect
+
+# -----------------------------------------------------------------------------
+# Visualizing the relationship
+# -----------------------------------------------------------------------------
+
+# Scatter plot: share_one_bid vs log(price)
+gnuplot l_price share_one_bid --output=display { \
+    set title "Competition-Price Relationship"; \
+    set xlabel "Share of single-bid lots (share_one_bid)"; \
+    set ylabel "log(average price)"; \
+}
+# -----------------------------------------------------------------------------
+# Checking for time trend
+# -----------------------------------------------------------------------------
+
+function matrix EstimateParams(series y)
+    scalar T = $nobs                          # sample size
+    series t = $time                          # time index 1..T
+    scalar mT = (T+1)/2                       # mean of 1..T
+    scalar vT = T*(T+1)/12                    # scaled variance term for time index
+    scalar cT = (sum(time*y) - T*(mean(y)*(T+1)/2)) / (T-1)  # scaled covariance term
+    scalar ybar = mean(y)                     # sample mean of y
+    scalar beta = cT / vT                     # slope of linear trend
+    scalar alpha = ybar - beta*mT             # intercept of linear trend
+    return {alpha; beta}                      # 2x1 vector: [alpha; beta]
+end function
+
+matrix par = EstimateParams(share_one_bid)    # [alpha; beta] for y = share_one_bid
+series yhat = par[1] + par[2]*t               # fitted linear trend (prof notation: yhat)
+series ehat = share_one_bid - yhat            # detrended component / residual (ehat)
+
+scalar order = 12                             # 12-month moving average window
+series MA = movavg(share_one_bid, order)      # moving average smoother (prof notation: MA)
+
+gnuplot share_one_bid yhat MA --time-series --with-lines --output=display { \
+    set title "share_one_bid: original vs linear trend vs seasonality)"; \
+    set ylabel "share_one_bid"; \
+}

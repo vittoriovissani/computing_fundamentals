@@ -24,17 +24,12 @@ print "EU furniture procurement (CPV 391) - quarterly time series"
 print ""
 
 # Keep printed output minimal
-summary n_lots total_value avg_lot_price avg_bids share_one_bid n_lots_all
-
-# n_tenders is redundant (always equals n_lots in this dataset), so i dropped it.
-# Instead, i computed the award rate: share of observed lots that have a valid winner.
-series award_rate = n_lots / n_lots_all
+summary n_lots total_value avg_lot_price avg_bids share_one_bid
 
 # Plot 1: activity + market size
 # (two core series to explain what happens in the market)
 gnuplot n_lots total_value --time-series --with-lines --output=display { \
     set title "Activity and market size"; \
-    set y2tics; \
 }
 
 # -----------------------------------------------------------------------------
@@ -87,7 +82,8 @@ ols l_price const avg_bids t
 # 4) One simple structural break example (COVID)
 # -----------------------------------------------------------------------------
 
-# Dummy from 2020Q1 onward (2008Q2 is obs 1 -> 2020Q1 approx obs 47)
+# Dummy from 2020Q1 onward
+# 2008Q2 = obs 1, so 2020Q1 = 1 + (2020-2008)*4 - 1 = 47
 series covid = (t >= 47) ? 1 : 0
 
 print ""
