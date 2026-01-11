@@ -167,9 +167,10 @@ table(bids_summary$bid_isWinning)
 # ==============================================================================
 
 # Statistics by procedure type
-proc_stats <- filter(valid_prices, !is.na(tender_procedureType))%>%
-  distinct(tender_id, .keep_all = TRUE)%>%
-  group_by(tender_procedureType) %>%
+proc_data <- filter(valid_prices, !is.na(tender_procedureType))%>%
+  distinct(tender_id, .keep_all = TRUE)
+
+proc_stats <- group_by(proc_data, tender_procedureType) %>%
   summarise(
     n = n(),
     mean_price = round(mean(bid_price_EUR), 0),
@@ -182,21 +183,8 @@ cat("\nStatistics by procedure type:\n")
 print(proc_stats)
 
 # Boxplot: Prices by procedure type
-main_procedures <- c("OPEN", "OTHER", "APPROACHING_BIDDERS", "MINITENDER")
+main_procedures <- proc_stats$tender_procedureType
 
-ggplot(filter(proc_data, tender_procedureType %in% main_procedures),
-       aes(x = tender_procedureType, y = bid_price_EUR, fill = tender_procedureType)) +
-  geom_boxplot() +
-  ylim(5000, NA) +
-  scale_y_log10(labels = scales::comma) +
-  labs(
-    title = "Price Distribution by Procedure Type",
-    subtitle = "Log Scale - Furniture Sector 2022",
-    x = "Procedure Type",
-    y = "Bid Price (EUR)"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "none")
 
 # Bar chart: Lots by procedure type
 proc_data %>%
@@ -214,6 +202,20 @@ proc_data %>%
     x = "Procedure Type",
     y = "Number of Lots"
   )
+
+ggplot(filter(proc_data, tender_procedureType %in% main_procedures),
+       aes(x = tender_procedureType, y = bid_price_EUR, fill = tender_procedureType)) +
+  geom_boxplot() +
+  ylim(0,100000)+
+  labs(
+    title = "Price Distribution by Procedure Type",
+    subtitle = "Log Scale - Furniture Sector 2022",
+    x = "Procedure Type",
+    y = "Bid Price (EUR)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
 
 # ==============================================================================
 # 6. GEOGRAPHICAL ANALYSIS
