@@ -43,22 +43,10 @@ setobs 12 2008:4 --time-series
 scalar T = $nobs
 series t = time
 
-# ------------------------------------------------------------------------------
 # Summary statistics
-# ------------------------------------------------------------------------------
-print "============================================"
-print "DESCRIPTIVE STATISTICS"
-print "============================================"
 summary share_one_bid_value n_lots avg_lot_value avg_bids
 
-# ==============================================================================
-# PART 3: MODEL ESTIMATION (OLS)
-# ==============================================================================
-
-print ""
-print "============================================"
-print "OLS DECOMPOSITION"
-print "============================================"
+# MODEL ESTIMATION (OLS)
 
 # Monthly dummies (reference = January)
 series m_2 = (month == 2)
@@ -87,14 +75,8 @@ matrix beta = $coeff
 scalar R2 = $rsq
 series yhat = $yhat
 
-# ==============================================================================
-# PART 4: DETRENDING (stile Detrend.inp del professore)
-# ==============================================================================
 
-print ""
-print "============================================"
-print "DETRENDING"
-print "============================================"
+# DETRENDING (stile Detrend.inp del professore)
 
 # Trend lineare stimato via OLS
 scalar b0 = beta[1]  # intercept
@@ -114,14 +96,8 @@ series DETREND = share_one_bid_value - TREND
 
 printf "Trend stimato: %.5f per mese (%.2f p.p./anno)\n", b1, b1*12*100
 
-# ==============================================================================
-# PART 5: PLOTS
-# ==============================================================================
 
-print ""
-print "============================================"
-print "PLOTS"
-print "============================================"
+# PLOTS
 
 # Plot 1: Serie originale + Trend + MA
 gnuplot share_one_bid_value TREND MA --time-series --with-lines --output=display { \
@@ -137,14 +113,8 @@ gnuplot share_one_bid_value yhat --time-series --with-lines --output=display { \
     set yrange [0:0.6]; \
 }
 
-# ==============================================================================
-# PART 6: FORECAST EVALUATION
-# ==============================================================================
 
-print ""
-print "============================================"
-print "FORECAST EVALUATION"
-print "============================================"
+# FORECAST EVALUATION
 
 # Split sample
 scalar test_size = 12
@@ -210,14 +180,9 @@ gnuplot share_one_bid_value FORECAST NAIVE --time-series --with-lines --output=d
 }
 smpl full
 
-# ==============================================================================
-# PART 7: FINAL OUTPUT (stile presentazione professore)
-# ==============================================================================
 
-print ""
-print "============================================"
-print "FINAL OUTPUT"
-print "============================================"
+# FINAL OUTPUT (stile presentazione professore)
+
 
 print ""
 print "Univariate forecast evaluation statistics:"
