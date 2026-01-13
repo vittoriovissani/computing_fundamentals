@@ -1,0 +1,441 @@
+# ==============================================================================
+# GRETL EXAM PROJECT - SHARE OF VALUE AWARDED WITH SINGLE BID
+# ==============================================================================
+#
+# RESEARCH QUESTION:
+# What is the trend of share_one_bid_value (share of procurement value awarded
+# with only one bid) and can we forecast it?
+#
+# TARGET VARIABLE: share_one_bid_value
+# Dataset: furniture_monthly_ts_v4.csv
+# Period: 2008M04 - 2024M04 (193 monthly observations)
+# ==============================================================================
+
+set verbose off
+
+# ==============================================================================
+# 1) DATA LOADING AND SETUP
+# ==============================================================================
+
+open furniture_monthly_ts_v4.csv
+setobs 12 2008:4 --time-series
+
+# Store sample size
+scalar T = $nobs
+
+# Create time index (t = 1..T)
+series t = time
+
+# ------------------------------------------------------------------------------
+# Descriptive statistics for key variables
+# ------------------------------------------------------------------------------
+
+print "============================================"
+print "DESCRIPTIVE STATISTICS"
+print "============================================"
+
+summary share_one_bid_value n_lots total_value avg_lot_value
+
+# Count NA observations in target variable
+scalar n_missing = sum(missing(share_one_bid_value))
+printf "\nMissing values in share_one_bid_value: %g\n", n_missing
+
+# Count zero_lots months
+scalar n_zero_lots = sum(zero_lots_month)
+printf "Months with zero lots: %g\n", n_zero_lots
+
+# ==============================================================================
+# 2) SUPPORT VARIABLES FOR DECOMPOSITION
+# ==============================================================================
+
+print ""
+print "============================================"
+print "CREATING SUPPORT VARIABLES"
+print "============================================"
+
+# ------------------------------------------------------------------------------
+# Monthly dummies (m_2 ... m_12, reference = month 1)
+# ------------------------------------------------------------------------------
+
+# Create monthly dummies manually using loop
+series m_2 = (month == 2)
+series m_3 = (month == 3)
+series m_4 = (month == 4)
+series m_5 = (month == 5)
+series m_6 = (month == 6)
+series m_7 = (month == 7)
+series m_8 = (month == 8)
+series m_9 = (month == 9)
+series m_10 = (month == 10)
+series m_11 = (month == 11)
+series m_12 = (month == 12)
+
+# List of seasonal dummies
+list DUMMIES = m_2 m_3 m_4 m_5 m_6 m_7 m_8 m_9 m_10 m_11 m_12
+
+# ------------------------------------------------------------------------------
+# Mix variables (log transformations)
+# ------------------------------------------------------------------------------
+
+# Log of number of lots (NA if n_lots == 0)
+series l_nlots = log(n_lots)
+
+# Log of average lot value (NA if avg_lot_value is NA or <= 0)
+series l_avg_lot_value = log(avg_lot_value)
+
+print "Support variables created:"
+print "  - Monthly dummies: m_2 to m_12"
+print "  - l_nlots: log(n_lots)"
+print "  - l_avg_lot_value: log(avg_lot_value)"
+
+# ------------------------------------------------------------------------------
+# 12-month moving average for comparison
+# ------------------------------------------------------------------------------
+
+scalar ma_order = 12
+series MA12 = movavg(share_one_bid_value, ma_order)
+
+# ==============================================================================
+# 3) DECOMPOSITION: OLS WITH TREND + SEASONALITY + MIX
+# ==============================================================================
+
+print ""
+print "============================================"
+print "OLS DECOMPOSITION MODEL"
+print "============================================"
+
+# Full model: share_one_bid_value ~ const + t + dummies + mix
+ols share_one_bid_value const t DUMMIES l_nlots l_avg_lot_value
+
+# Store coefficients
+matrix beta = $coeff
+scalar n_coef = nelem(beta)
+
+# Extract key coefficients
+scalar alpha = beta[1]          # constant
+scalar beta_t = beta[2]         # trend coefficient
+scalar beta_nlots = beta[13]    # l_nlots coefficient
+scalar beta_avgval = beta[14]   # l_avg_lot_value coefficient
+
+# Create fitted components
+series trend_component = alpha + beta_t * t
+series fitted_full = $yhat
+series seasonal_component = fitted_full - trend_component - beta_nlots*l_nlots - beta_avgval*l_avg_lot_value
+series irregular = share_one_bid_value - fitted_full
+
+# Store R-squared
+scalar R2 = $rsq
+
+# Print interpretation
+print ""
+print "MODEL INTERPRETATION:"
+printf "  Trend coefficient: %.6f per month\n", beta_t
+printf "  Trend change per year: %.4f (%.2f p.p.)\n", beta_t*12, beta_t*12*100
+printf "  l_nlots coefficient: %.4f\n", beta_nlots
+printf "  l_avg_lot_value coefficient: %.4f\n", beta_avgval
+printf "  R-squared: %.4f\n", R2
+
+# Direction of trend
+if beta_t > 0
+    print "  -> Trend is INCREASING (competition worsening)"
+else
+    print "  -> Trend is DECREASING (competition improving)"
+endif
+
+# ==============================================================================
+# 4) VISUALIZATION
+# ==============================================================================
+
+print ""
+print "============================================"
+print "GENERATING PLOTS"
+print "============================================"
+
+# ------------------------------------------------------------------------------
+# Plot 1: Observed vs Trend (OLS) vs MA(12)
+# ------------------------------------------------------------------------------
+
+gnuplot share_one_bid_value trend_component MA12 --time-series --with-lines --output=display { \
+    set title "Share of Value with Single Bid: Observed vs Trend vs MA(12)"; \
+    set ylabel "Share (0-1)"; \
+    set key top left; \
+}
+
+# ------------------------------------------------------------------------------
+# Plot 2: Monthly seasonality (bar chart of coefficients)
+# ------------------------------------------------------------------------------
+
+# Create matrix of seasonal effects
+matrix seasonal_effects = zeros(12,1)
+seasonal_effects[1] = 0  # reference month (January)
+loop for i=2..12
+    seasonal_effects[i] = beta[i]  # coefficients for m_2 to m_12
+endloop
+
+# Print seasonal effects
+print ""
+print "SEASONAL EFFECTS (relative to January):"
+strings month_names = defarray("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+loop for i=1..12
+    printf "  %s: %+.4f\n", month_names[i], seasonal_effects[i]
+endloop
+
+# Find months with strongest effects
+scalar max_effect = maxc(seasonal_effects)
+scalar min_effect = minc(seasonal_effects)
+printf "\n  Strongest positive effect: %.4f\n", max_effect
+printf "  Strongest negative effect: %.4f\n", min_effect
+
+# ==============================================================================
+# 5) OUT-OF-SAMPLE FORECAST EVALUATION
+# ==============================================================================
+
+print ""
+print "============================================"
+print "OUT-OF-SAMPLE FORECAST EVALUATION"
+print "============================================"
+
+# Define test set: last 12 months
+scalar test_size = 12
+scalar train_end = T - test_size
+scalar test_start = train_end + 1
+
+printf "Training set: observations 1 to %g\n", train_end
+printf "Test set: observations %g to %g (last 12 months)\n", test_start, T
+
+# ------------------------------------------------------------------------------
+# Re-estimate model on training set only
+# ------------------------------------------------------------------------------
+
+smpl 1 train_end
+ols share_one_bid_value const t DUMMIES l_nlots l_avg_lot_value --quiet
+
+# Store training coefficients
+matrix beta_train = $coeff
+scalar alpha_train = beta_train[1]
+scalar beta_t_train = beta_train[2]
+scalar beta_nlots_train = beta_train[13]
+scalar beta_avgval_train = beta_train[14]
+
+# Restore full sample
+smpl full
+
+# ------------------------------------------------------------------------------
+# Create forecasts for test period
+# ------------------------------------------------------------------------------
+
+# Model forecast (using training coefficients)
+series forecast_model = alpha_train + beta_t_train * t
+
+# Add seasonal dummies
+loop for i=2..12
+    forecast_model = forecast_model + beta_train[i] * (month == i)
+endloop
+
+# Add mix components (using actual values as scenario)
+forecast_model = forecast_model + beta_nlots_train * l_nlots + beta_avgval_train * l_avg_lot_value
+
+# Naive seasonal forecast: value from 12 months ago
+series forecast_naive = share_one_bid_value(-12)
+
+# ------------------------------------------------------------------------------
+# Calculate forecast errors (test period only)
+# ------------------------------------------------------------------------------
+
+# Create test period indicator
+series test_period = (t >= test_start)
+
+# Forecast errors
+series e_model = (share_one_bid_value - forecast_model) * test_period
+series e_naive = (share_one_bid_value - forecast_naive) * test_period
+
+# Count valid test observations
+scalar n_test = sum(test_period * ok(share_one_bid_value) * ok(forecast_model))
+
+# Calculate metrics for model
+smpl test_start T
+
+scalar ME_model = mean(share_one_bid_value - forecast_model)
+scalar MAE_model = mean(abs(share_one_bid_value - forecast_model))
+scalar RMSE_model = sqrt(mean((share_one_bid_value - forecast_model)^2))
+
+# MAPE (avoid division by zero)
+series pct_error = abs((share_one_bid_value - forecast_model) / share_one_bid_value)
+scalar MAPE_model = mean(pct_error) * 100
+
+# Calculate metrics for naive
+scalar ME_naive = mean(share_one_bid_value - forecast_naive)
+scalar MAE_naive = mean(abs(share_one_bid_value - forecast_naive))
+scalar RMSE_naive = sqrt(mean((share_one_bid_value - forecast_naive)^2))
+
+# Theil's U2
+scalar U2 = RMSE_model / RMSE_naive
+
+# Restore full sample
+smpl full
+
+# Print metrics
+print ""
+print "FORECAST METRICS (Test Period):"
+print "--------------------------------"
+printf "  ME (Model):   %+.5f\n", ME_model
+printf "  MAE (Model):  %.5f\n", MAE_model
+printf "  RMSE (Model): %.5f\n", RMSE_model
+printf "  MAPE (Model): %.2f%%\n", MAPE_model
+print ""
+printf "  ME (Naive):   %+.5f\n", ME_naive
+printf "  MAE (Naive):  %.5f\n", MAE_naive
+printf "  RMSE (Naive): %.5f\n", RMSE_naive
+print ""
+printf "  Theil's U2:   %.4f\n", U2
+
+if U2 < 1
+    print "  -> Model outperforms naive seasonal benchmark (U2 < 1)"
+else
+    print "  -> Naive seasonal benchmark is better (U2 >= 1)"
+endif
+
+# ------------------------------------------------------------------------------
+# Plot 3: Forecast comparison in test period
+# ------------------------------------------------------------------------------
+
+# Restrict to test period for plot
+smpl test_start T
+
+gnuplot share_one_bid_value forecast_model forecast_naive --time-series --with-lines --output=display { \
+    set title "Forecast Comparison (Test Period: Last 12 Months)"; \
+    set ylabel "Share (0-1)"; \
+    set key top left; \
+}
+
+smpl full
+
+# ==============================================================================
+# 6) 12-MONTH AHEAD FORECAST
+# ==============================================================================
+
+print ""
+print "============================================"
+print "12-MONTH AHEAD PROJECTION"
+print "============================================"
+
+# For 12-month ahead forecast, we use the constant scenario:
+# - l_nlots and l_avg_lot_value = mean of last 12 months
+
+# Calculate means from last 12 months
+smpl test_start T
+scalar mean_l_nlots = mean(l_nlots)
+scalar mean_l_avgval = mean(l_avg_lot_value)
+smpl full
+
+printf "Mix variables (last 12-month average):\n"
+printf "  l_nlots: %.4f\n", mean_l_nlots
+printf "  l_avg_lot_value: %.4f\n", mean_l_avgval
+
+# Create projection for next 12 months
+print ""
+print "PROJECTED share_one_bid_value (next 12 months):"
+print "Month       t       Projection"
+print "------------------------------------"
+
+# Starting month after last observation
+# Last obs is 2024:04, so next is 2024:05
+# Month sequence: 5,6,7,8,9,10,11,12,1,2,3,4 (May 2024 to Apr 2025)
+
+matrix future_months = {5;6;7;8;9;10;11;12;1;2;3;4}
+
+loop for h=1..12
+    # Calculate future time index
+    scalar t_future = T + h
+    
+    # Get month from pre-computed sequence
+    scalar future_month = future_months[h]
+    
+    # Calculate forecast
+    scalar proj = alpha_train + beta_t_train * t_future
+    
+    # Add seasonal effect
+    if future_month > 1
+        proj = proj + beta_train[future_month]
+    endif
+    
+    # Add mix effect (constant scenario)
+    proj = proj + beta_nlots_train * mean_l_nlots + beta_avgval_train * mean_l_avgval
+    
+    # Clip to [0, 1]
+    if proj < 0
+        proj = 0
+    elif proj > 1
+        proj = 1
+    endif
+    
+    # Print (year depends on whether month >= 5)
+    if future_month >= 5
+        printf "2024-%02g    %3g      %.4f\n", future_month, t_future, proj
+    else
+        printf "2025-%02g    %3g      %.4f\n", future_month, t_future, proj
+    endif
+endloop
+
+# ==============================================================================
+# 7) FINAL SUMMARY FOR EXAM
+# ==============================================================================
+
+print ""
+print "============================================"
+print "FINAL SUMMARY"
+print "============================================"
+
+print ""
+print "1. TREND:"
+if beta_t > 0
+    printf "   The share of value awarded with single bid shows an INCREASING trend\n"
+    printf "   of %.4f percentage points per year (p-value from OLS).\n", beta_t*12*100
+    print "   This indicates WORSENING competition over time."
+else
+    printf "   The share of value awarded with single bid shows a DECREASING trend\n"
+    printf "   of %.4f percentage points per year.\n", abs(beta_t*12*100)
+    print "   This indicates IMPROVING competition over time."
+endif
+
+print ""
+print "2. SEASONALITY:"
+print "   Monthly dummies capture systematic variation across months."
+printf "   Strongest seasonal effect: %.4f\n", max_effect
+printf "   Weakest seasonal effect: %.4f\n", min_effect
+
+print ""
+print "3. MIX EFFECTS:"
+printf "   l_nlots coefficient: %.4f ", beta_nlots
+if beta_nlots > 0
+    print "(more lots -> higher single-bid share)"
+else
+    print "(more lots -> lower single-bid share)"
+endif
+printf "   l_avg_lot_value coefficient: %.4f ", beta_avgval
+if beta_avgval > 0
+    print "(higher value -> higher single-bid share)"
+else
+    print "(higher value -> lower single-bid share)"
+endif
+
+print ""
+print "4. FORECAST PERFORMANCE:"
+printf "   Theil's U2: %.4f\n", U2
+if U2 < 1
+    print "   The OLS model outperforms the naive seasonal benchmark."
+else
+    print "   The naive seasonal benchmark performs better."
+endif
+
+print ""
+print "5. CAVEATS:"
+printf "   - %g months with missing data (zero lots)\n", n_zero_lots
+print "   - Residual autocorrelation not formally tested"
+print "   - Mix variables use constant scenario for projection"
+printf "   - Outlier months flagged: check outlier_total_value, outlier_share_value\n"
+
+print ""
+print "============================================"
+print "END OF ANALYSIS"
+print "============================================"

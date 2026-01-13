@@ -1,0 +1,236 @@
+# ==============================================================================
+# GRETL EXAM PROJECT - SHARE OF VALUE AWARDED WITH SINGLE BID
+# VERSION 3 - FINAL (stile professore)
+# ==============================================================================
+#
+# TARGET: share_one_bid_value (quota di valore aggiudicata con una sola offerta)
+# Dataset: furniture_monthly_ts_v4.csv
+# Period: 2008M04 - 2024M04 (T = 193 observations, 191 valid)
+# ==============================================================================
+
+set verbose off
+
+# ==============================================================================
+# PART 1: FUNCTIONS
+# ==============================================================================
+# Definiamo le funzioni per la forecast evaluation (come nel file Detrend.inp)
+
+function scalar ME(series actual, series forecast)
+    series e = actual - forecast
+    scalar ME = mean(e)
+    return ME
+end function
+
+function scalar RMSE(series actual, series forecast)
+    series e = actual - forecast
+    scalar RMSE = sqrt(mean(e^2))
+    return RMSE
+end function
+
+function scalar MAE(series actual, series forecast)
+    series e = actual - forecast
+    scalar MAE = mean(abs(e))
+    return MAE
+end function
+
+# ==============================================================================
+# PART 2: DATA LOADING
+# ==============================================================================
+
+open furniture_monthly_ts_v4.csv
+setobs 12 2008:4 --time-series
+
+scalar T = $nobs
+series t = time
+
+# ------------------------------------------------------------------------------
+# Summary statistics
+# ------------------------------------------------------------------------------
+print "============================================"
+print "DESCRIPTIVE STATISTICS"
+print "============================================"
+summary share_one_bid_value n_lots avg_lot_value avg_bids
+
+# ==============================================================================
+# PART 3: MODEL ESTIMATION (OLS)
+# ==============================================================================
+
+print ""
+print "============================================"
+print "OLS DECOMPOSITION"
+print "============================================"
+
+# Monthly dummies (reference = January)
+series m_2 = (month == 2)
+series m_3 = (month == 3)
+series m_4 = (month == 4)
+series m_5 = (month == 5)
+series m_6 = (month == 6)
+series m_7 = (month == 7)
+series m_8 = (month == 8)
+series m_9 = (month == 9)
+series m_10 = (month == 10)
+series m_11 = (month == 11)
+series m_12 = (month == 12)
+
+list SEAS = m_2 m_3 m_4 m_5 m_6 m_7 m_8 m_9 m_10 m_11 m_12
+
+# Mix variables (log-transformed)
+series l_nlots = log(n_lots)
+series l_avgval = log(avg_lot_value)
+
+# Estimate OLS
+ols share_one_bid_value const t SEAS l_nlots l_avgval
+
+# Store results
+matrix beta = $coeff
+scalar R2 = $rsq
+series yhat = $yhat
+
+# ==============================================================================
+# PART 4: DETRENDING (stile Detrend.inp del professore)
+# ==============================================================================
+
+print ""
+print "============================================"
+print "DETRENDING"
+print "============================================"
+
+# Trend lineare stimato via OLS
+scalar b0 = beta[1]  # intercept
+scalar b1 = beta[2]  # trend coefficient
+
+# Fitted trend (solo trend, centrato sulla media per visualizzazione)
+scalar y_mean = mean(share_one_bid_value)
+scalar t_mean = mean(t)
+series TREND = y_mean + b1 * (t - t_mean)
+
+# Moving average (12 mesi)
+scalar order = 12
+series MA = movavg(share_one_bid_value, order)
+
+# Detrended series (residuo dopo rimozione trend)
+series DETREND = share_one_bid_value - TREND
+
+printf "Trend stimato: %.5f per mese (%.2f p.p./anno)\n", b1, b1*12*100
+
+# ==============================================================================
+# PART 5: PLOTS
+# ==============================================================================
+
+print ""
+print "============================================"
+print "PLOTS"
+print "============================================"
+
+# Plot 1: Serie originale + Trend + MA
+gnuplot share_one_bid_value TREND MA --time-series --with-lines --output=display { \
+    set title "share_one_bid_value: original vs trend vs MA(12)"; \
+    set ylabel "share_one_bid_value"; \
+    set yrange [0:0.6]; \
+}
+
+# Plot 2: Observed vs Fitted
+gnuplot share_one_bid_value yhat --time-series --with-lines --output=display { \
+    set title "Observed vs Fitted (OLS)"; \
+    set ylabel "share_one_bid_value"; \
+    set yrange [0:0.6]; \
+}
+
+# ==============================================================================
+# PART 6: FORECAST EVALUATION
+# ==============================================================================
+
+print ""
+print "============================================"
+print "FORECAST EVALUATION"
+print "============================================"
+
+# Split sample
+scalar test_size = 12
+scalar train_end = T - test_size
+
+# Re-estimate on training sample
+smpl 1 train_end
+ols share_one_bid_value const t SEAS l_nlots l_avgval --quiet
+matrix beta_tr = $coeff
+smpl full
+
+# Build forecasts
+series FORECAST = beta_tr[1] + beta_tr[2]*t
+loop for i=2..12
+    FORECAST = FORECAST + beta_tr[i+1] * (month == i)
+endloop
+FORECAST = FORECAST + beta_tr[14]*l_nlots + beta_tr[15]*l_avgval
+
+# Naive seasonal (t-12)
+series NAIVE = share_one_bid_value(-12)
+
+# Evaluate on test sample
+smpl (T - test_size + 1) T
+
+scalar me_f = ME(share_one_bid_value, FORECAST)
+scalar mae_f = MAE(share_one_bid_value, FORECAST)
+scalar rmse_f = RMSE(share_one_bid_value, FORECAST)
+
+scalar me_n = ME(share_one_bid_value, NAIVE)
+scalar mae_n = MAE(share_one_bid_value, NAIVE)
+scalar rmse_n = RMSE(share_one_bid_value, NAIVE)
+
+scalar U2 = rmse_f / rmse_n
+
+smpl full
+
+# Build output matrix (stile professore)
+matrix output = {}
+output ~= {me_f; mae_f; rmse_f}
+output ~= {me_n; mae_n; rmse_n}
+
+strings stats = defarray("ME", "MAE", "RMSE")
+strings models = defarray("OLS Model", "Naive(t-12)")
+
+rnameset(output, stats)
+cnameset(output, models)
+
+print "Forecast evaluation statistics:"
+print output
+
+printf "\nTheil's U2: %.3f\n", U2
+if U2 < 1
+    print "-> OLS model beats naive"
+else
+    print "-> Naive benchmark is better (or equal)"
+endif
+
+# Plot 3: Forecast comparison
+smpl (T - test_size + 1) T
+gnuplot share_one_bid_value FORECAST NAIVE --time-series --with-lines --output=display { \
+    set title "Forecast comparison (test: last 12 months)"; \
+    set ylabel "share_one_bid_value"; \
+}
+smpl full
+
+# ==============================================================================
+# PART 7: FINAL OUTPUT (stile presentazione professore)
+# ==============================================================================
+
+print ""
+print "============================================"
+print "FINAL OUTPUT"
+print "============================================"
+
+print ""
+print "Univariate forecast evaluation statistics:"
+print output
+
+print ""
+printf "Theil's U2 = %.3f\n", U2
+
+print ""
+print "CONCLUSIONS:"
+printf "  1. Trend: +%.2f p.p./year -> competition worsening\n", b1*12*100
+printf "  2. Mix effect (l_avgval): %.3f -> larger lots attract more bids\n", beta[15]
+printf "  3. R-squared: %.1f%% -> low, noisy data\n", R2*100
+printf "  4. Forecast: U2=%.2f -> naive slightly better\n", U2
+print ""
+print "============================================"

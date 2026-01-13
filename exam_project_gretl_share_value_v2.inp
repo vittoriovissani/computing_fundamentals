@@ -1,0 +1,290 @@
+# ==============================================================================
+# GRETL EXAM PROJECT - SHARE OF VALUE AWARDED WITH SINGLE BID
+# VERSION 2 - CORRECTED
+# ==============================================================================
+#
+# TARGET: share_one_bid_value (quota di valore aggiudicata con una sola offerta)
+# Dataset: furniture_monthly_ts_v4.csv
+# Period: 2008M04 - 2024M04 (193 monthly observations)
+# ==============================================================================
+
+set verbose off
+
+# ==============================================================================
+# PART 1: FUNCTIONS (stile del professore)
+# ==============================================================================
+
+function scalar ME(series actual, series forecast)
+    series e = actual - forecast
+    return mean(e)
+end function
+
+function scalar RMSE(series actual, series forecast)
+    series e = actual - forecast
+    return sqrt(mean(e^2))
+end function
+
+function scalar MAE(series actual, series forecast)
+    series e = actual - forecast
+    return mean(abs(e))
+end function
+
+function scalar MAPE(series actual, series forecast)
+    series e = abs((actual - forecast) / actual)
+    return mean(100 * e)
+end function
+
+function scalar TheilU2(series actual, series forecast)
+    # U2 = RMSE(model) / RMSE(naive seasonal t-12)
+    series naive = actual(-12)
+    scalar rmse_model = RMSE(actual, forecast)
+    scalar rmse_naive = RMSE(actual, naive)
+    return rmse_model / rmse_naive
+end function
+
+# ==============================================================================
+# PART 2: DATA & PRELIMINARY ANALYSIS
+# ==============================================================================
+
+open furniture_monthly_ts_v4.csv
+setobs 12 2008:4 --time-series
+
+scalar T = $nobs
+series t = time
+
+# Summary statistics
+print "============================================"
+print "1. DESCRIPTIVE STATISTICS"
+print "============================================"
+summary share_one_bid_value n_lots avg_lot_value avg_bids
+
+# ==============================================================================
+# PART 3: OLS DECOMPOSITION (trend + seasonality + mix)
+# ==============================================================================
+
+print ""
+print "============================================"
+print "2. OLS DECOMPOSITION MODEL"
+print "============================================"
+
+# Create monthly dummies (reference = January)
+series m_2 = (month == 2)
+series m_3 = (month == 3)
+series m_4 = (month == 4)
+series m_5 = (month == 5)
+series m_6 = (month == 6)
+series m_7 = (month == 7)
+series m_8 = (month == 8)
+series m_9 = (month == 9)
+series m_10 = (month == 10)
+series m_11 = (month == 11)
+series m_12 = (month == 12)
+
+list SEAS = m_2 m_3 m_4 m_5 m_6 m_7 m_8 m_9 m_10 m_11 m_12
+
+# Mix variables
+series l_nlots = log(n_lots)
+series l_avgval = log(avg_lot_value)
+
+# OLS: share ~ const + t + seasonality + mix
+ols share_one_bid_value const t SEAS l_nlots l_avgval
+
+# Store results
+matrix beta = $coeff
+scalar R2 = $rsq
+series yhat = $yhat
+series resid = $uhat
+
+# Extract coefficients (correct indexing!)
+# beta[1]=const, beta[2]=t, beta[3..13]=m_2..m_12, beta[14]=l_nlots, beta[15]=l_avgval
+scalar b_const = beta[1]
+scalar b_trend = beta[2]
+scalar b_nlots = beta[14]
+scalar b_avgval = beta[15]
+
+# ==============================================================================
+# PART 4: INTERPRETATION
+# ==============================================================================
+
+print ""
+print "============================================"
+print "3. MODEL INTERPRETATION"
+print "============================================"
+
+# Trend interpretation
+scalar trend_annual_pp = b_trend * 12 * 100
+printf "TREND:\n"
+printf "  Coefficient: %.5f per month\n", b_trend
+printf "  Annual change: %+.2f percentage points/year\n", trend_annual_pp
+if b_trend > 0
+    print "  Direction: INCREASING (competition worsening)"
+else
+    print "  Direction: DECREASING (competition improving)"
+endif
+
+# Seasonality interpretation
+print ""
+print "SEASONALITY (relative to January):"
+strings mnames = defarray("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+matrix seas_eff = zeros(12,1)
+seas_eff[1] = 0
+loop for i=2..12
+    seas_eff[i] = beta[i+1]
+    printf "  %s: %+.3f\n", mnames[i], seas_eff[i]
+endloop
+
+scalar max_seas = maxc(seas_eff)
+scalar min_seas = minc(seas_eff)
+printf "\n  Range: [%.3f, %.3f]\n", min_seas, max_seas
+
+# Mix effects interpretation
+print ""
+print "MIX EFFECTS:"
+printf "  l_nlots:  %.4f ", b_nlots
+if b_nlots < 0
+    print "(more lots -> lower single-bid share)"
+else
+    print "(more lots -> higher single-bid share)"
+endif
+printf "  l_avgval: %.4f ", b_avgval
+if b_avgval < 0
+    print "(higher value -> lower single-bid share)"
+else
+    print "(higher value -> higher single-bid share)"
+endif
+
+print ""
+printf "R-squared: %.1f%%\n", R2*100
+
+# ==============================================================================
+# PART 5: VISUALIZATION
+# ==============================================================================
+
+print ""
+print "============================================"
+print "4. PLOTS"
+print "============================================"
+
+# Moving average for smoothing
+series MA12 = movavg(share_one_bid_value, 12)
+
+# Linear trend (solo la componente di trend, non l'intercetta piena!)
+scalar y_mean = mean(share_one_bid_value)
+scalar t_mean = mean(t)
+series trend_line = y_mean + b_trend * (t - t_mean)
+
+# Plot 1: Observed vs MA12 vs Trend
+gnuplot share_one_bid_value MA12 trend_line --time-series --with-lines --output=display { \
+    set title "Share of Value with Single Bid (2008-2024)"; \
+    set ylabel "Share (0-1)"; \
+    set yrange [0:0.7]; \
+    set key top left; \
+}
+
+# Plot 2: Fitted vs Observed
+gnuplot share_one_bid_value yhat --time-series --with-lines --output=display { \
+    set title "Observed vs Fitted (OLS Model)"; \
+    set ylabel "Share (0-1)"; \
+    set yrange [0:0.7]; \
+    set key top left; \
+}
+
+# ==============================================================================
+# PART 6: FORECAST EVALUATION (Out-of-sample)
+# ==============================================================================
+
+print ""
+print "============================================"
+print "5. FORECAST EVALUATION"
+print "============================================"
+
+# Split: training (all except last 12), test (last 12)
+scalar test_size = 12
+scalar train_end = T - test_size
+
+# Re-estimate on training set
+smpl 1 train_end
+ols share_one_bid_value const t SEAS l_nlots l_avgval --quiet
+matrix beta_tr = $coeff
+smpl full
+
+# Build forecast for test period using TRAINING coefficients
+series fc = beta_tr[1] + beta_tr[2]*t
+loop for i=2..12
+    fc = fc + beta_tr[i+1] * (month == i)
+endloop
+fc = fc + beta_tr[14]*l_nlots + beta_tr[15]*l_avgval
+
+# Naive seasonal: value from 12 months ago
+series naive = share_one_bid_value(-12)
+
+# Evaluate on test set only
+smpl (T - test_size + 1) T
+
+scalar me_fc = ME(share_one_bid_value, fc)
+scalar mae_fc = MAE(share_one_bid_value, fc)
+scalar rmse_fc = RMSE(share_one_bid_value, fc)
+
+scalar me_nv = ME(share_one_bid_value, naive)
+scalar mae_nv = MAE(share_one_bid_value, naive)
+scalar rmse_nv = RMSE(share_one_bid_value, naive)
+
+scalar U2 = rmse_fc / rmse_nv
+
+smpl full
+
+print "Test period: last 12 months"
+print ""
+print "           Model      Naive(t-12)"
+print "  --------------------------------"
+printf "  ME:      %+.4f     %+.4f\n", me_fc, me_nv
+printf "  MAE:      %.4f      %.4f\n", mae_fc, mae_nv
+printf "  RMSE:     %.4f      %.4f\n", rmse_fc, rmse_nv
+print ""
+printf "  Theil's U2: %.3f\n", U2
+if U2 < 1
+    print "  -> Model beats naive benchmark"
+else
+    print "  -> Naive benchmark is better"
+endif
+
+# Plot: forecast comparison
+smpl (T - test_size + 1) T
+gnuplot share_one_bid_value fc naive --time-series --with-lines --output=display { \
+    set title "Forecast Comparison (Test: Last 12 Months)"; \
+    set ylabel "Share (0-1)"; \
+    set key top left; \
+}
+smpl full
+
+# ==============================================================================
+# PART 7: FINAL SUMMARY (Exam-ready)
+# ==============================================================================
+
+print ""
+print "============================================"
+print "FINAL SUMMARY"
+print "============================================"
+
+print ""
+print "RESEARCH QUESTION:"
+print "  How has competition (single-bid share by value) evolved in EU"
+print "  furniture procurement, and can we forecast it?"
+
+print ""
+print "KEY FINDINGS:"
+printf "  1. TREND: +%.2f p.p./year (p<0.01) -> competition worsening\n", trend_annual_pp
+printf "  2. SEASONALITY: range [%.3f, %.3f] -> modest monthly variation\n", min_seas, max_seas
+printf "  3. MIX EFFECTS: more lots (%.3f) and higher values (%.3f)\n", b_nlots, b_avgval
+print "     both associated with LOWER single-bid share"
+printf "  4. MODEL FIT: R² = %.1f%% (low, typical for noisy monthly data)\n", R2*100
+printf "  5. FORECAST: Theil U2 = %.2f -> naive seasonal benchmark wins\n", U2
+
+print ""
+print "CAVEATS:"
+print "  - 2 months with zero lots (NA)"
+print "  - Autocorrelation in residuals not tested"
+print "  - Model captures trend but poor at short-term prediction"
+
+print ""
+print "============================================"
