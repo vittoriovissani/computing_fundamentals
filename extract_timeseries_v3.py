@@ -5,10 +5,11 @@
 # Extracts time series data from EU procurement CSVs (2009-2024)
 # for furniture sector (CPV 391*) to create monthly/quarterly aggregates
 #
-# KEY INSIGHT ON DEDUPLICATION:
-# The dataset has multiple rows for the same bid due to multiple publications.
-# Primary key for a unique bid: (tender_id, lot_lotId, bid_row_nr)
-# To deduplicate: keep only the row with max(publication_row_nr) per bid.
+# KEY INSIGHT ON DATA STRUCTURE:
+# Each row represents a bid. To get unique LOTS (awarded contracts):
+# - Filter for winning bids (bid_isWinning == "yes")
+# - Deduplicate by (tender_id, lot_row_nr)
+# - Use lot_bidsCount for competition metrics (already in data)
 #
 # OUTPUT: Monthly and quarterly time series suitable for regression/forecasting
 # ==============================================================================
@@ -35,14 +36,11 @@ COLS_TO_LOAD = [
     "tender_publications_lastContractAwardDate",
     "tender_procedureType",
     "tender_size",
-    "lot_lotId",
+    "lot_row_nr",
     "lot_bidsCount",
-    "lot_validBidsCount",
     "lot_isAwarded",
-    "bid_row_nr",
     "bid_price_EUR",
-    "bid_isWinning",
-    "publication_row_nr"
+    "bid_isWinning"
 ]
 
 # Outlier thresholds
@@ -151,10 +149,8 @@ def extract_time_series():
     # STEP 2: Convert numeric fields
     # =========================================================================
     print("\n[3] Converting fields...")
-    df["publication_row_nr"] = pd.to_numeric(df["publication_row_nr"], errors="coerce")
     df["bid_price_EUR"] = to_numeric_price(df["bid_price_EUR"])
     df["lot_bidsCount"] = pd.to_numeric(df["lot_bidsCount"], errors="coerce")
-    df["lot_validBidsCount"] = pd.to_numeric(df["lot_validBidsCount"], errors="coerce")
     df["event_date"] = choose_event_date(df)
     
     # =========================================================================
@@ -165,26 +161,21 @@ def extract_time_series():
     print(f"  Winner rows: {len(winners):,}")
     
     # Drop rows with missing keys
-    winners = winners.dropna(subset=["tender_id", "lot_lotId"])
+    winners = winners.dropna(subset=["tender_id", "lot_row_nr"])
     print(f"  After dropping missing keys: {len(winners):,}")
     
     # =========================================================================
-    # STEP 4: DEDUPLICATION - Key insight!
-    # A lot can have only ONE winning bid. The unique identifier for a 
-    # winning bid is (tender_id, lot_lotId). Multiple rows exist due to:
-    # 1) Multiple publications (publication_row_nr)
-    # 2) Same tender appearing in multiple year files
-    # We keep only the row with the highest publication_row_nr per lot.
+    # STEP 4: DEDUPLICATION
+    # Each row is a bid. For awarded lots we keep one row per lot.
+    # Unique lot identifier: (tender_id, lot_row_nr)
     # =========================================================================
     print("\n[5] Deduplicating (one row per lot)...")
     
     n_before = len(winners)
     
-    # Sort by publication_row_nr and keep last (highest) per lot
-    winners = winners.sort_values("publication_row_nr", na_position="first")
     winners = winners.drop_duplicates(
-        subset=["tender_id", "lot_lotId"], 
-        keep="last"
+        subset=["tender_id", "lot_row_nr"], 
+        keep="first"
     )
     
     n_after = len(winners)
@@ -224,7 +215,7 @@ def extract_time_series():
     # =========================================================================
     # STEP 7: Create lot_key for aggregation
     # =========================================================================
-    winners["lot_key"] = winners["tender_id"].astype(str) + "::" + winners["lot_lotId"].astype(str)
+    winners["lot_key"] = winners["tender_id"].astype(str) + "::" + winners["lot_row_nr"].astype(str)
     
     # =========================================================================
     # STEP 8: Create time series aggregates
@@ -241,7 +232,6 @@ def extract_time_series():
         avg_lot_price=("bid_price_EUR", "mean"),
         median_lot_price=("bid_price_EUR", "median"),
         avg_bids=("lot_bidsCount", "mean"),
-        avg_valid_bids=("lot_validBidsCount", "mean"),
     ).reset_index()
     
     # Competition indicator: share of lots with exactly one bid
@@ -265,7 +255,6 @@ def extract_time_series():
         avg_lot_price=("bid_price_EUR", "mean"),
         median_lot_price=("bid_price_EUR", "median"),
         avg_bids=("lot_bidsCount", "mean"),
-        avg_valid_bids=("lot_validBidsCount", "mean"),
     ).reset_index()
     
     competition_q = winners.groupby("year_quarter").agg(
