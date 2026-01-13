@@ -181,8 +181,7 @@ gnuplot share_one_bid_value FORECAST NAIVE --time-series --with-lines --output=d
 smpl full
 
 
-# FINAL OUTPUT (stile presentazione professore)
-
+# FINAL OUTPUT
 
 print ""
 print "Univariate forecast evaluation statistics:"

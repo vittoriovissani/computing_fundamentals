@@ -1,0 +1,83 @@
+# ==============================================================================
+# EXAM PROJECT: Competition in EU Furniture Procurement
+# Target: share_one_bid_value (share of value awarded with single bids)
+# Data: furniture_monthly_ts_v4.csv (monthly, 2008:04 - 2024:04)
+# ==============================================================================
+
+set verbose off
+
+# --- FUNCTIONS ---
+
+function scalar ME(series actual, series forecast)
+    series e = actual - forecast
+    return mean(e)
+end function
+
+function scalar RMSE(series actual, series forecast)
+    series e = actual - forecast
+    return sqrt(mean(e^2))
+end function
+
+function scalar MAE(series actual, series forecast)
+    series e = actual - forecast
+    return mean(abs(e))
+end function
+
+# --- DATA ---
+
+open furniture_monthly_ts_v4.csv
+setobs 12 2008:4 --time-series
+
+scalar T = $nobs
+series t = time
+
+summary share_one_bid_value
+
+# --- OLS DETRENDING ---
+
+ols share_one_bid_value const t
+matrix beta = $coeff
+series TREND = beta[1] + beta[2]*t
+
+printf "Estimated trend: %.5f per month (%.2f p.p./year)\n", beta[2], beta[2]*12*100
+
+# --- MOVING AVERAGE ---
+
+scalar order = 12
+series MA = movavg(share_one_bid_value, order)
+
+# --- PLOTS ---
+
+gnuplot share_one_bid_value TREND MA --time-series --with-lines --output=display
+
+# --- FORECAST EVALUATION ---
+
+scalar test_size = 12
+smpl 1 (T - test_size)
+ols share_one_bid_value const t --quiet
+matrix beta_tr = $coeff
+smpl full
+
+series FORECAST = beta_tr[1] + beta_tr[2]*t
+series NAIVE = share_one_bid_value(-12)
+
+smpl (T - test_size + 1) T
+
+matrix output = {}
+output ~= {ME(share_one_bid_value, FORECAST); MAE(share_one_bid_value, FORECAST); RMSE(share_one_bid_value, FORECAST)}
+output ~= {ME(share_one_bid_value, NAIVE); MAE(share_one_bid_value, NAIVE); RMSE(share_one_bid_value, NAIVE)}
+
+strings stats = defarray("ME", "MAE", "RMSE")
+strings models = defarray("OLS Trend", "Naive(t-12)")
+rnameset(output, stats)
+cnameset(output, models)
+
+print "Forecast evaluation:"
+print output
+
+scalar U2 = output[3,1] / output[3,2]
+printf "\nTheil's U2 = %.3f\n", U2
+
+smpl full
+
+gnuplot share_one_bid_value FORECAST NAIVE --time-series --with-lines --output=display
