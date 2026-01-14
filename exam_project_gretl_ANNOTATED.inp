@@ -5,79 +5,147 @@
 # ==============================================================================
 
 set verbose off
+# Suppresses automatic output during script execution
 
-# --- FUNCTIONS ---
+
+
+# FUNCTIONS
+
+# These functions compute forecast accuracy metrics (see Gretl help, section 35.4)
 
 function scalar ME(series actual, series forecast)
+    # ME = Mean Error: measures forecast bias
+    # Positive ME -> forecast underestimates actual
     series e = actual - forecast
     return mean(e)
 end function
 
 function scalar RMSE(series actual, series forecast)
+    # RMSE = Root Mean Squared Error: penalizes large errors
     series e = actual - forecast
     return sqrt(mean(e^2))
 end function
 
 function scalar MAE(series actual, series forecast)
+    # MAE = Mean Absolute Error: robust to outliers
     series e = actual - forecast
     return mean(abs(e))
 end function
 
-# --- DATA ---
+
+# ==============================================================================
+# PART 2: DATA LOADING
+# ==============================================================================
 
 open furniture_monthly_ts_v4.csv
+# Loads the CSV dataset into memory
+
 setobs 12 2008:4 --time-series
+# setobs <frequency> <start_date> --time-series
+# frequency=12 -> monthly data; 2008:4 -> April 2008
 
 scalar T = $nobs
+# $nobs: built-in accessor, returns number of observations (T=193)
+
 series t = time
+# Creates time index: t = 1, 2, 3, ..., T
 
 summary share_one_bid_value
+# Prints descriptive statistics: mean, std dev, min, max, etc.
 
-# --- OLS DETRENDING ---
+
+#sanity check plot
+
+#gnuplot n_lots n_tenders TREND MA --time-series --with-lines --output=display
+
+
+
+
+# OLS DETRENDING
 
 ols share_one_bid_value const t
+# OLS regression: share_one_bid_value = beta[1] + beta[2]*t + error
+# const: intercept; t: linear time trend
+
 matrix beta = $coeff
+# $coeff: coefficient vector after estimation; beta[1]=const, beta[2]=slope
+
 series TREND = beta[1] + beta[2]*t
+# Reconstructs the fitted trend line
 
 printf "Estimated trend: %.5f per month (%.2f p.p./year)\n", beta[2], beta[2]*12*100
+# printf: formatted print; %.5f = 5 decimals; beta[2]*12*100 = annual change in p.p.
 
-# --- MOVING AVERAGE ---
+
+# MOVING AVERAGE
 
 scalar order = 12
 series MA = movavg(share_one_bid_value, order)
+# movavg(<series>, <window>): 12-month centered moving average
+# Smooths short-term fluctuations, reveals underlying trend
 
-# --- PLOTS ---
 
 gnuplot share_one_bid_value TREND MA --time-series --with-lines --output=display
+# Plots original series, linear trend, and moving average together
 
-# --- FORECAST EVALUATION ---
 
+# FORECAST EVALUATION
 scalar test_size = 12
+# Reserve last 12 months for out-of-sample testing
+
 smpl 1 (T - test_size)
+# smpl <start> <end>: restricts sample to training period (obs 1 to 181)
+
 ols share_one_bid_value const t --quiet
+# Re-estimate on training data only; --quiet suppresses output
+
 matrix beta_tr = $coeff
+# Store training coefficients
+
 smpl full
+# Restore full sample
 
 series FORECAST = beta_tr[1] + beta_tr[2]*t
+# Construct forecast using training coefficients
+
 series NAIVE = share_one_bid_value(-12)
+# Naive benchmark: value from 12 months ago (seasonal lag)
+# Syntax: series(-k) creates lag of k periods
 
 smpl (T - test_size + 1) T
+# Restrict to test period (last 12 observations)
+
 
 matrix output = {}
+# Initialize empty matrix
+
 output ~= {ME(share_one_bid_value, FORECAST); MAE(share_one_bid_value, FORECAST); RMSE(share_one_bid_value, FORECAST)}
+# ~= appends column; {a; b; c} creates column vector (semicolon = new row)
+
 output ~= {ME(share_one_bid_value, NAIVE); MAE(share_one_bid_value, NAIVE); RMSE(share_one_bid_value, NAIVE)}
+# Append naive metrics as second column
 
 strings stats = defarray("ME", "MAE", "RMSE")
+# defarray(): creates string array for row names
+
 strings models = defarray("OLS Trend", "Naive(t-12)")
+# Column names
+
 rnameset(output, stats)
 cnameset(output, models)
+# Attach row/column names to matrix
 
 print "Forecast evaluation:"
 print output
+# Print matrix with labels
 
 scalar U2 = output[3,1] / output[3,2]
+# Theil's U2 = RMSE_model / RMSE_naive
+# U2 < 1 -> model beats naive; U2 > 1 -> naive wins
+
 printf "\nTheil's U2 = %.3f\n", U2
 
 smpl full
 
 gnuplot share_one_bid_value FORECAST NAIVE --time-series --with-lines --output=display
+# Plot actual vs forecast vs naive in test period
