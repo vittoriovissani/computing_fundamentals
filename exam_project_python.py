@@ -1,6 +1,6 @@
 # EUROPEAN PUBLIC PROCUREMENT ANALYSIS - FURNITURE SECTOR
 
-# Analysis of European public tenders in the furniture sector (2021 data).
+# Analysis of European public tenders in the furniture sector (2022 data).
 
 # DATA SOURCE: EU Open Data Portal - Public Procurement Dataset)
 
@@ -9,7 +9,7 @@
 # Data Cleaning and Filtering
 # Price Distribution Analysis
 # Competition Analysis (Bids per Lot)
-# Procedure Type / Tender Size Analysis
+# Procedure Type Analysis
 # Geographical Analysis
 
 #SETUP AND DATA LOADING
@@ -20,7 +20,8 @@ import numpy as np
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
-pd.set_option('display.float_format', lambda x: '%.2f' % x)
+pd.set_option('display.float_format', '{:.2f}'.format)
+
 
 # Define columns for analysis
 selected_cols = [
@@ -29,173 +30,176 @@ selected_cols = [
     "tender_country",
     "tender_size",
     "tender_procedureType",
-    "lot_row_nr",
-    "lot_bidsCount",
+    "buyer_buyerType",
+    "lot_lotId",
+    "bid_row_nr",
     "bid_price_EUR",
+    "publication_row_nr",
     "bid_isWinning"
 ]
 
-# Load 2021 data
+# Load 2022 data
 print("Loading data...")
 raw_data = pd.read_csv(
-    "/Users/vittoriovissani/Documents/Computing fundamentals/workspace esame/data-all-csv/data-all-2021.csv",
+    "/Users/vittoriovissani/Documents/Computing fundamentals/workspace esame/data-all-csv/data-all-2022.csv",
     sep=';',
     usecols=selected_cols,
     dtype=str
 )
 print("Total rows loaded:", len(raw_data))
 
-# DATA CLEANING AND FILTERING
+# DATA CLEANING & FILTERING
 
-# Single cleaning flow: build one dataset of awarded lots, deduplicated and cleaned
+# Filter furniture sector 
+furniture_data = raw_data[raw_data['tender_mainCpv'].str.startswith('391', na=False)]
+print("Rows after furniture filter:", len(furniture_data))
 
-# Filter furniture sector (CPV 391*)
-furniture_raw = raw_data[raw_data['tender_mainCpv'].str.startswith('391', na=False)]
-print("Rows after furniture filter:", len(furniture_raw))
+# Convert publication_row_nr to numeric
+furniture_data = furniture_data.copy()
+furniture_data['publication_row_nr'] = pd.to_numeric(furniture_data['publication_row_nr'], errors='coerce')
 
-# Keep only winning bids (actual contracts)
-furniture_awarded = furniture_raw[furniture_raw['bid_isWinning'] == 'yes']
-print("Rows after winning bid filter:", len(furniture_awarded))
+# Keep latest publication per tender
+furniture_data = furniture_data.sort_values('publication_row_nr').drop_duplicates(
+    subset=['tender_id'], keep='last')
+print("Rows after deduplication:", len(furniture_data))
 
-# One row per lot (within tender) + basic type cleaning + main filters
-furniture_dedup = furniture_awarded.drop_duplicates(subset=['tender_id', 'lot_row_nr'])
-print("Unique lots (dedup):", len(furniture_dedup))
+# Create unique bids dataset
+unique_bids = furniture_data[furniture_data['bid_row_nr'].notna()]
+unique_bids = unique_bids.drop_duplicates(subset=['tender_id', 'lot_lotId', 'bid_row_nr'])
+print("Unique bids:", len(unique_bids))
 
-furniture_clean = furniture_dedup.copy()
-furniture_clean['bid_price_EUR'] = furniture_clean['bid_price_EUR'].str.replace(',', '.', regex=False)
-furniture_clean['bid_price_EUR'] = pd.to_numeric(furniture_clean['bid_price_EUR'], errors='coerce')
-furniture_clean['lot_bidsCount'] = pd.to_numeric(furniture_clean['lot_bidsCount'], errors='coerce')
+# Convert price to numeric
+unique_bids = unique_bids.copy()
+unique_bids['bid_price_EUR'] = unique_bids['bid_price_EUR'].str.replace(',', '.', regex=False)
+unique_bids['bid_price_EUR'] = pd.to_numeric(unique_bids['bid_price_EUR'], errors='coerce')
 
-furniture_clean = furniture_clean[
-    (furniture_clean['bid_price_EUR'].notna()) &
-    (furniture_clean['bid_price_EUR'] > 0) &
-    (furniture_clean['bid_price_EUR'] < 5000000) &
-    (furniture_clean['lot_bidsCount'].notna())
-]
-
-print("Lots after price + bidsCount filters:", len(furniture_clean))
-print("Unique tenders (clean):", furniture_clean['tender_id'].nunique())
-print("Duplicated rows:", furniture_clean.duplicated().sum())
+# Filter valid prices
+valid_prices = unique_bids[
+    (unique_bids['bid_price_EUR'].notna()) &
+    (unique_bids['bid_price_EUR'] > 0) &
+    (unique_bids['bid_price_EUR'] < 5000000)]
+print("Valid price records:", len(valid_prices))
+print()
+print("Unique tenders:", valid_prices['tender_id'].nunique())
+print("Unique lots:", valid_prices['lot_lotId'].nunique())
+print("Unique bids:", len(valid_prices.drop_duplicates(subset=['tender_id', 'lot_lotId', 'bid_row_nr'])))
+print()
 
 # PRICE DISTRIBUTION ANALYSIS
 
 # Summary statistics
-print("\nPrice Summary Statistics:")
-print(furniture_clean['bid_price_EUR'].describe())
+print("Price Summary Statistics:")
+print(valid_prices['bid_price_EUR'].describe())
+print()
+
+# Histogram: Bid price distribution
+price_under_100k = valid_prices[valid_prices['bid_price_EUR'] < 100000]
+plt.hist(price_under_100k['bid_price_EUR'], bins=30, color='steelblue', edgecolor='white')
+plt.title('Bid Price Distribution\nFurniture Sector - Bids < 100,000 EUR')
+plt.xlabel('Bid Price (EUR)')
+plt.ylabel('Frequency')
+plt.show()
 
 # Boxplot: Overall price distribution
-price_under_500k = furniture_clean[furniture_clean['bid_price_EUR'] < 500000]
-plt.figure()
+price_under_500k = valid_prices[valid_prices['bid_price_EUR'] < 500000]
 plt.boxplot(price_under_500k['bid_price_EUR'].dropna(), vert=False)
-plt.title('Bid Price Boxplot\nFurniture Sector 2021')
+plt.title('Bid Price Boxplot\nFurniture Sector 2022')
 plt.xlabel('Bid Price (EUR)')
+plt.show()
+
+# Boxplot: Prices distribution by tender size
+size_data = valid_prices[valid_prices['tender_size'].notna()]
+size_data[['bid_price_EUR', 'tender_size']].boxplot(by='tender_size')
+plt.ylim(0, 100000)
+plt.suptitle('Price Distribution by Tender Size\nFurniture Sector 2022')
+plt.xlabel('Tender Size')
+plt.ylabel('Bid Price (EUR)')
 plt.show()
 
 # COMPETITION ANALYSIS (BIDS PER LOT)
 
-# Use lot_bidsCount from the dataset (same df used for prices)
-print("\nCompetition Summary (lot_bidsCount):")
-print(furniture_clean['lot_bidsCount'].describe())
+# Calculate bids per lot
+competition = furniture_data.drop_duplicates(subset=['tender_id', 'lot_lotId', 'bid_row_nr'])
+competition = competition[competition['lot_lotId'].notna()]
+competition = competition.groupby(['tender_id', 'lot_lotId']).agg(
+    n_bids=('bid_row_nr', 'nunique')).reset_index()
+
+print("Competition Statistics (Bids per Lot):")
+print(competition['n_bids'].describe())
+print()
+print("Bids per lot distribution:")
+print(competition['n_bids'].value_counts().sort_index())
 
 # Bar chart: Bids per lot distribution
-competition_filtered = furniture_clean[
-    (furniture_clean['lot_bidsCount'] <= 15) &
-    (furniture_clean['lot_bidsCount'] > 0)
-]
-bids_counts = competition_filtered['lot_bidsCount'].value_counts().sort_index()
-
-plt.figure()
-plt.bar(bids_counts.index.astype(int).astype(str), bids_counts.values, color='coral', edgecolor='darkred')
-plt.title('Number of Bids per Lot\nCompetition Level in Furniture Tenders (from lot_bidsCount)')
+competition_filtered = competition[competition['n_bids'] <= 15]
+bids_counts = competition_filtered['n_bids'].value_counts().sort_index()
+plt.bar(bids_counts.index.astype(str), bids_counts.values, color='coral', edgecolor='darkred')
+plt.yscale('log')
+plt.title('Number of Bids per Lot\nCompetition Level in Furniture Tenders')
 plt.xlabel('Number of Bids')
 plt.ylabel('Lot Count')
 plt.show()
 
-# PROCEDURE TYPE / TENDER SIZE ANALYSIS
+# Winning bids summary
+bids_summary = furniture_data.drop_duplicates(subset=['tender_id', 'lot_lotId', 'bid_row_nr'])
+print("\nWinning bids distribution:")
+print(bids_summary['bid_isWinning'].value_counts())
 
-# Pie chart of tender size
-size_counts = furniture_clean[furniture_clean['tender_size'].notna()].groupby('tender_size').size()
+# PROCEDURE TYPE ANALYSIS
 
-plt.figure()
-plt.pie(size_counts.values, labels=size_counts.index, autopct='%1.1f%%')
-plt.title('Tender Size Distribution')
+# Statistics by procedure type
+proc_data = valid_prices[valid_prices['tender_procedureType'].notna()]
+proc_data = proc_data.drop_duplicates(subset=['tender_id'])
+
+proc_stats = proc_data.groupby('tender_procedureType').agg(
+    n=('bid_price_EUR', 'count'),
+    mean_price=('bid_price_EUR', 'mean'),
+    median_price=('bid_price_EUR', 'median')).round(0)
+proc_stats = proc_stats[proc_stats['n'] >= 50].sort_values('n', ascending=False)
+print("\nStatistics by procedure type:")
+print(proc_stats)
+
+# Boxplot: Prices by procedure type
+main_procedures = proc_stats.index.tolist()
+
+# Bar chart: Lots by procedure type
+proc_lots = proc_data.drop_duplicates(subset=['lot_lotId'])
+proc_lot_counts = proc_lots.groupby('tender_procedureType').size().sort_values(ascending=False).head(10)
+plt.barh(proc_lot_counts.index[::-1], proc_lot_counts.values[::-1], color='steelblue')
+plt.title('Number of Lots by Procedure Type\nTop 10 Procedures - Furniture Sector')
+plt.xlabel('Number of Lots')
+plt.ylabel('Procedure Type')
 plt.show()
 
-# Top procedure types
-top_procedures = (furniture_clean[furniture_clean['tender_procedureType'].notna()]
-    .groupby('tender_procedureType')
-    .size()
-    .sort_values(ascending=False)
-    .head(5)
-    .index.tolist())
-
-# Competition by procedure type (pie charts)
-furniture_top_proc = furniture_clean[
-    (furniture_clean['tender_procedureType'].notna()) &
-    (furniture_clean['tender_procedureType'].isin(top_procedures))
-].copy()
-furniture_top_proc['competition'] = furniture_top_proc['lot_bidsCount'].apply(
-    lambda x: 'one_bid' if x == 1 else 'more'
-)
-
-fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-for i, comp in enumerate(['one_bid', 'more']):
-    subset = furniture_top_proc[furniture_top_proc['competition'] == comp]
-    proc_counts = subset.groupby('tender_procedureType').size()
-    axes[i].pie(proc_counts.values, labels=proc_counts.index, autopct='%1.1f%%')
-    axes[i].set_title(comp)
-plt.suptitle('Procedure Type by Competition Level')
-plt.show()
-
-# Boxplot: price by competition level
-furniture_comp = furniture_clean.copy()
-furniture_comp['competition'] = furniture_comp['lot_bidsCount'].apply(
-    lambda x: 'one_bid' if x == 1 else 'more'
-)
-
-fig, ax = plt.subplots()
-groups = [furniture_comp[furniture_comp['competition'] == c]['bid_price_EUR'].dropna() for c in ['one_bid', 'more']]
-bp = ax.boxplot(groups, labels=['one_bid', 'more'], patch_artist=True)
-colors = ['lightcoral', 'lightgreen']
-for patch, color in zip(bp['boxes'], colors):
-    patch.set_facecolor(color)
-# add mean points
-means = [g.mean() for g in groups]
-ax.scatter([1, 2], means, color='red', s=50, zorder=3)
-ax.set_ylim(0, 150000)
-ax.set_title('Price Distribution by Competition Level')
-ax.set_xlabel('Competition')
-ax.set_ylabel('Bid Price (EUR)')
+proc_filtered = proc_data[proc_data['tender_procedureType'].isin(main_procedures)]
+proc_filtered[['bid_price_EUR', 'tender_procedureType']].boxplot(by='tender_procedureType')
+plt.ylim(0, 100000)
+plt.suptitle('Price Distribution by Procedure Type\nFurniture Sector 2022')
+plt.xlabel('Procedure Type')
+plt.ylabel('Bid Price (EUR)')
+plt.xticks(rotation=45)
 plt.show()
 
 # GEOGRAPHICAL ANALYSIS
 
 # Bar chart: Top countries by number of tenders
-country_tenders = (furniture_clean[furniture_clean['tender_country'].notna()]
-    .drop_duplicates(subset=['tender_id'])
-    .groupby('tender_country')
-    .size()
-    .sort_values(ascending=False)
-    .head(10))
-
-plt.figure()
-plt.barh(country_tenders.index[::-1], country_tenders.values[::-1], color='steelblue')
+country_data = furniture_data[furniture_data['tender_country'].notna()]
+country_tenders = country_data.drop_duplicates(subset=['tender_id'])
+country_counts = country_tenders.groupby('tender_country').size().sort_values(ascending=False).head(10)
+plt.barh(country_counts.index[::-1], country_counts.values[::-1], color='steelblue')
 plt.title('Number of Tenders by Country\nTop 10 Countries - Furniture Sector')
 plt.xlabel('Number of Tenders')
 plt.ylabel('Country')
 plt.show()
 
 # Boxplot: Prices by country
-country_prices = furniture_clean[furniture_clean['bid_price_EUR'] < 100000]
-countries = country_prices['tender_country'].dropna().unique()
-
-fig, ax = plt.subplots(figsize=(12, 6))
-data_by_country = [country_prices[country_prices['tender_country'] == c]['bid_price_EUR'].dropna() 
-                   for c in sorted(countries)]
-ax.boxplot(data_by_country, labels=sorted(countries))
-ax.set_title('Price Distribution by Country\nFurniture Sector - Lots < 100,000 EUR')
-ax.set_xlabel('Country')
-ax.set_ylabel('Bid Price (EUR)')
+furniture_data_price = furniture_data.copy()
+furniture_data_price['bid_price_EUR'] = furniture_data_price['bid_price_EUR'].str.replace(',', '.', regex=False)
+furniture_data_price['bid_price_EUR'] = pd.to_numeric(furniture_data_price['bid_price_EUR'], errors='coerce')
+country_prices = furniture_data_price[furniture_data_price['bid_price_EUR'] < 100000]
+country_prices[['bid_price_EUR', 'tender_country']].boxplot(by='tender_country')
+plt.suptitle('Price Distribution by Country\nFurniture Sector - Bids < 100,000 EUR')
+plt.xlabel('Country')
+plt.ylabel('Bid Price (EUR)')
 plt.xticks(rotation=45)
-plt.tight_layout()
 plt.show()

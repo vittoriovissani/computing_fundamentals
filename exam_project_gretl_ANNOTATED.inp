@@ -7,36 +7,7 @@
 set verbose off
 # Suppresses automatic output during script execution
 
-
-
-# FUNCTIONS
-
-# These functions compute forecast accuracy metrics (see Gretl help, section 35.4)
-
-function scalar ME(series actual, series forecast)
-    # ME = Mean Error: measures forecast bias
-    # Positive ME -> forecast underestimates actual
-    series e = actual - forecast
-    return mean(e)
-end function
-
-function scalar RMSE(series actual, series forecast)
-    # RMSE = Root Mean Squared Error: penalizes large errors
-    series e = actual - forecast
-    return sqrt(mean(e^2))
-end function
-
-function scalar MAE(series actual, series forecast)
-    # MAE = Mean Absolute Error: robust to outliers
-    series e = actual - forecast
-    return mean(abs(e))
-end function
-
-
-# ==============================================================================
-# PART 2: DATA LOADING
-# ==============================================================================
-
+# DATA LOADING
 open furniture_monthly_ts_v4.csv
 # Loads the CSV dataset into memory
 
@@ -56,10 +27,7 @@ summary share_one_bid_value
 
 #sanity check plot
 
-#gnuplot n_lots n_tenders TREND MA --time-series --with-lines --output=display
-
-
-
+gnuplot n_lots n_tenders --time-series --with-lines --output=display
 
 # OLS DETRENDING
 
@@ -87,6 +55,27 @@ series MA = movavg(share_one_bid_value, order)
 
 gnuplot share_one_bid_value TREND MA --time-series --with-lines --output=display
 # Plots original series, linear trend, and moving average together
+
+
+#these functions compute forecast accurary measures
+function scalar ME(series actual, series forecast)
+    # ME = Mean Error: measures forecast bias
+    # Positive ME -> forecast underestimates actual
+    series e = actual - forecast
+    return mean(e)
+end function
+
+function scalar RMSE(series actual, series forecast)
+    # RMSE = Root Mean Squared Error: penalizes large errors
+    series e = actual - forecast
+    return sqrt(mean(e^2))
+end function
+
+function scalar MAE(series actual, series forecast)
+    # MAE = Mean Absolute Error: robust to outliers
+    series e = actual - forecast
+    return mean(abs(e))
+end function
 
 
 # FORECAST EVALUATION
@@ -144,8 +133,16 @@ scalar U2 = output[3,1] / output[3,2]
 # U2 < 1 -> model beats naive; U2 > 1 -> naive wins
 
 printf "\nTheil's U2 = %.3f\n", U2
+scalar U2_pct = abs(1- U2) * 100
+
+if U2 < 1
+    printf "\nThe Forecast is better than the naive by %.1f %%\n", U2_pct
+else
+    printf "\nThe Forecast is worse than the naive by %.1f %%\n", U2_pct
+endif
 
 smpl full
+
 
 gnuplot share_one_bid_value FORECAST NAIVE --time-series --with-lines --output=display
 # Plot actual vs forecast vs naive in test period

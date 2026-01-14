@@ -253,6 +253,7 @@ def extract_time_series():
     
     # Group by year_month
     agg_dict = {
+        "tender_id": "nunique",         # n_tenders (distinct tenders)
         "lot_key": "nunique",           # n_lots
         "lot_value": ["sum", "mean", "median"],
         "is_one_bid": "sum",            # n_lots_one_bid
@@ -265,6 +266,7 @@ def extract_time_series():
     # Flatten column names
     monthly_agg.columns = [
         "year_month_period",
+        "n_tenders",
         "n_lots",
         "total_value",
         "avg_lot_value",
@@ -364,6 +366,7 @@ def extract_time_series():
         "year_month",
         "year",
         "month",
+        "n_tenders",
         "n_lots",
         "total_value",
         "n_lots_one_bid",
@@ -388,7 +391,7 @@ def extract_time_series():
         monthly[col] = monthly[col].astype(int)
     
     # Fill NA in count columns with 0 for months with no data
-    count_cols = ["n_lots", "n_lots_one_bid"]
+    count_cols = ["n_tenders", "n_lots", "n_lots_one_bid"]
     for col in count_cols:
         monthly[col] = monthly[col].fillna(0).astype(int)
     
