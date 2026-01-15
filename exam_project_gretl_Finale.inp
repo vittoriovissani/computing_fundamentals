@@ -1,8 +1,8 @@
-# ==============================================================================
+
 # EXAM PROJECT: Competition in EU Furniture Procurement
 # Target: share_one_bid_value (share of value awarded with single bids)
 # Data: furniture_monthly_ts_v4.csv (monthly, 2008:04 - 2024:04)
-# ==============================================================================
+
 
 set verbose off
 # Suppresses automatic output during script execution
